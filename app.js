@@ -1,23 +1,131 @@
-// Configurações
-const ADMIN_USERNAME = 'admin';
-const ADMIN_PASSWORD = 'essilor@lux';
-const LOW_STOCK_THRESHOLD = 50;
-
-// Mapeamento de usuários e filiais
-const USER_BRANCHES = {
-    'Caio': '9011',
-    'Isadora': '9012',
-    'Vanessa': '9013',
-    'Brasil': '9014',
-    'Tiago': '9015',
-    'Aurelio': '9016',
-    'Joathan': '9017',
-    'Maicon': '9018',
-    'Daniel': '9019',
-    'Wagner': '9020'
+// API Base URL
+// Se estiver em localhost, usa a porta 3000 do servidor Node.js
+// Caso contrário, usa a mesma origem
+const getApiBaseUrl = () => {
+    const origin = window.location.origin;
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+        // Extrai o hostname e usa porta 3000 para a API
+        const hostname = window.location.hostname;
+        return `http://${hostname}:3000`;
+    }
+    return origin;
 };
 
-// Mapeamento de senhas dos usuários (senha = número da filial)
+const API_BASE_URL = getApiBaseUrl();
+
+// Log para debug
+console.log('API Base URL:', API_BASE_URL);
+console.log('Current Origin:', window.location.origin);
+
+// Função auxiliar para fazer requisições com tratamento de erro
+const apiRequest = async (url, options = {}) => {
+    try {
+        const response = await fetch(url, options);
+        if (!response.ok) {
+            if (response.status === 404) {
+                throw new Error(`Servidor não encontrado. Certifique-se de que o servidor Node.js está rodando na porta 3000.`);
+            }
+            if (response.status === 405) {
+                throw new Error(`Método não permitido. Verifique se o servidor está configurado corretamente.`);
+            }
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `Erro ${response.status}: ${response.statusText}`);
+        }
+        return await response.json();
+    } catch (error) {
+        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+            throw new Error(`Não foi possível conectar ao servidor em ${API_BASE_URL}. Certifique-se de que o servidor Node.js está rodando (npm start).`);
+        }
+        throw error;
+    }
+};
+
+// Gerenciamento de dados via API
+const Storage = {
+    getCredentials: async () => {
+        try {
+            return await apiRequest(`${API_BASE_URL}/api/credentials`);
+        } catch (error) {
+            console.error('Erro ao buscar credenciais:', error);
+            return [];
+        }
+    },
+    
+    getUsedCredentials: async () => {
+        try {
+            return await apiRequest(`${API_BASE_URL}/api/used-credentials`);
+        } catch (error) {
+            console.error('Erro:', error);
+            return [];
+        }
+    },
+    
+    getGeneratedHistory: async () => {
+        try {
+            return await apiRequest(`${API_BASE_URL}/api/history`);
+        } catch (error) {
+            console.error('Erro:', error);
+            return [];
+        }
+    },
+    
+    uploadCredentials: async (file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        try {
+            return await apiRequest(`${API_BASE_URL}/api/upload-credentials`, {
+                method: 'POST',
+                body: formData
+            });
+        } catch (error) {
+            throw error;
+        }
+    },
+    
+    generateCredential: async (userName, branchNumber, userPassword) => {
+        return await apiRequest(`${API_BASE_URL}/api/generate-credential`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ userName, branchNumber, userPassword })
+        });
+    },
+    
+    getStats: async () => {
+        try {
+            return await apiRequest(`${API_BASE_URL}/api/stats`);
+        } catch (error) {
+            console.error('Erro:', error);
+            return null;
+        }
+    }
+};
+
+// Lista de usuários permitidos
+const ALLOWED_USERS = ['Caio', 'Tiago', 'Brasil', 'Aurelio', 'Vanessa', 'Isadora', 'Maicon', 'Wagner', 'Daniel', 'Joathan'];
+
+// Credenciais de Admin
+const ADMIN_USER = 'admin';
+const ADMIN_PASSWORD = 'essilor@lux';
+
+// Gerenciamento de sessão admin (usa sessionStorage para sessão do navegador)
+const AdminSession = {
+    isLoggedIn: () => {
+        return sessionStorage.getItem('adminLoggedIn') === 'true';
+    },
+    
+    login: () => {
+        sessionStorage.setItem('adminLoggedIn', 'true');
+    },
+    
+    logout: () => {
+        sessionStorage.removeItem('adminLoggedIn');
+    }
+};
+
+// Senhas pré-definidas para cada usuário
 const USER_PASSWORDS = {
     'Caio': '9011',
     'Isadora': '9012',
@@ -31,427 +139,310 @@ const USER_PASSWORDS = {
     'Wagner': '9020'
 };
 
-// Estado da aplicação
-let isAdmin = false;
-let availableCredentials = [];
-let usedCredentials = [];
-let isDarkMode = false;
+// Gerenciamento de senhas dos usuários
+const UserPasswords = {
+    validate: (userName, password) => {
+        // Valida contra as senhas pré-definidas
+        return USER_PASSWORDS[userName] === password;
+    }
+};
 
-// URL base da API (será detectada automaticamente)
-const API_BASE_URL = window.location.origin;
 
-// Inicialização
-document.addEventListener('DOMContentLoaded', () => {
-    loadData();
-    setupEventListeners();
-    // Carregar preferência de tema do localStorage (apenas tema, não credenciais)
-    const savedDarkMode = localStorage.getItem('vpn_isDarkMode');
-    if (savedDarkMode) {
-        isDarkMode = JSON.parse(savedDarkMode);
-        document.body.classList.toggle('dark-mode', isDarkMode);
-        updateThemeIcon();
+// Gerenciamento de Admin
+const adminModal = document.getElementById('adminModal');
+const adminLoginForm = document.getElementById('adminLoginForm');
+const adminImportBtn = document.getElementById('adminImportBtn');
+const logoutBtn = document.getElementById('logoutBtn');
+const uploadSection = document.getElementById('uploadSection');
+const closeModal = document.getElementById('closeModal');
+const adminError = document.getElementById('adminError');
+
+// Função para mostrar/esconder seção de upload baseado no login
+function updateAdminUI() {
+    if (AdminSession.isLoggedIn()) {
+        uploadSection.classList.remove('hidden');
+        adminImportBtn.classList.add('hidden');
+        logoutBtn.classList.remove('hidden');
+    } else {
+        uploadSection.classList.add('hidden');
+        adminImportBtn.classList.remove('hidden');
+        logoutBtn.classList.add('hidden');
+    }
+}
+
+// Abrir modal de login
+adminImportBtn.addEventListener('click', () => {
+    adminModal.classList.remove('hidden');
+    adminError.classList.add('hidden');
+});
+
+// Fechar modal
+closeModal.addEventListener('click', () => {
+    adminModal.classList.add('hidden');
+});
+
+adminModal.addEventListener('click', (e) => {
+    if (e.target === adminModal) {
+        adminModal.classList.add('hidden');
     }
 });
 
-// Event Listeners
-function setupEventListeners() {
-    // Toggle de tema
-    document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-
-    // Autenticação Admin
-    document.getElementById('adminAuthForm').addEventListener('submit', handleAdminAuth);
-    document.getElementById('logoutAdminBtn').addEventListener('click', handleLogoutAdmin);
-
-    // Upload
-    document.getElementById('uploadBtn').addEventListener('click', handleUpload);
-
-    // Geração de credenciais
-    document.getElementById('generateForm').addEventListener('submit', handleGenerateCredential);
+// Login admin
+adminLoginForm.addEventListener('submit', (e) => {
+    e.preventDefault();
     
-    // Preencher número da filial automaticamente quando usuário é selecionado
-    document.getElementById('userName').addEventListener('change', function() {
-        const selectedUser = this.value;
-        if (selectedUser && USER_BRANCHES[selectedUser]) {
-            document.getElementById('branchNumber').value = USER_BRANCHES[selectedUser];
-        } else {
-            document.getElementById('branchNumber').value = '';
-        }
-    });
-
-    // Export
-    document.getElementById('exportBtn').addEventListener('click', exportToExcel);
-}
-
-// Autenticação Admin
-function handleAdminAuth(e) {
-    e.preventDefault();
-    const username = document.getElementById('adminUsername').value;
+    const user = document.getElementById('adminUser').value;
     const password = document.getElementById('adminPassword').value;
-    const errorDiv = document.getElementById('adminAuthError');
-
-    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-        isAdmin = true;
-        errorDiv.textContent = '';
-        document.getElementById('adminAuthSection').classList.add('hidden');
-        document.getElementById('uploadSection').classList.remove('hidden');
-        // Salvar apenas preferência de admin no localStorage (temporário, apenas para sessão)
-        localStorage.setItem('vpn_isAdmin', JSON.stringify(isAdmin));
+    
+    if (user === ADMIN_USER && password === ADMIN_PASSWORD) {
+        AdminSession.login();
+        adminModal.classList.add('hidden');
+        updateAdminUI();
+        adminLoginForm.reset();
+        adminError.classList.add('hidden');
     } else {
-        errorDiv.textContent = 'Usuário ou senha incorretos!';
-        isAdmin = false;
+        adminError.textContent = 'Usuário ou senha incorretos!';
+        adminError.classList.remove('hidden');
     }
-}
+});
 
-function handleLogoutAdmin() {
-    isAdmin = false;
-    document.getElementById('adminUsername').value = '';
-    document.getElementById('adminPassword').value = '';
-    document.getElementById('adminAuthError').textContent = '';
-    document.getElementById('adminAuthSection').classList.remove('hidden');
-    document.getElementById('uploadSection').classList.add('hidden');
-    localStorage.removeItem('vpn_isAdmin');
-}
+// Logout
+logoutBtn.addEventListener('click', () => {
+    AdminSession.logout();
+    updateAdminUI();
+});
 
+// Upload de arquivo
+const uploadArea = document.getElementById('uploadArea');
+const fileInput = document.getElementById('fileInput');
+const fileInfo = document.getElementById('fileInfo');
 
-// Upload de credenciais (apenas admin)
-async function handleUpload() {
-    if (!isAdmin) {
-        showStatus('uploadStatus', 'Acesso negado. Faça a autenticação de administrador primeiro.', 'error');
-        return;
+uploadArea.addEventListener('click', () => {
+    if (AdminSession.isLoggedIn()) {
+        fileInput.click();
     }
+});
 
-    const fileInput = document.getElementById('credentialFile');
-    const file = fileInput.files[0];
-
-    if (!file) {
-        showStatus('uploadStatus', 'Por favor, selecione um arquivo TXT.', 'error');
-        return;
+fileInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    try {
+        fileInfo.classList.remove('hidden');
+        fileInfo.innerHTML = `<p>Processando arquivo: ${file.name}...</p>`;
+        
+        const result = await Storage.uploadCredentials(file);
+        
+        fileInfo.innerHTML = `
+            <div class="alert alert-success">
+                <strong>✓ Arquivo carregado com sucesso!</strong><br>
+                ${result.count} credenciais importadas.<br>
+                <small>Histórico de gerações anterior foi zerado.</small>
+            </div>
+        `;
+        
+        // Atualiza as estatísticas após zerar
+        updateStats();
+    } catch (error) {
+        fileInfo.innerHTML = `
+            <div class="alert alert-error">
+                <strong>✗ Erro:</strong> ${error.message}
+            </div>
+        `;
     }
+});
 
-    if (file.type !== 'text/plain' && !file.name.endsWith('.txt')) {
-        showStatus('uploadStatus', 'Por favor, selecione um arquivo TXT válido.', 'error');
-        return;
-    }
+// Geração de credencial
+const generateForm = document.getElementById('generateForm');
+const resultCard = document.getElementById('resultCard');
 
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-        try {
-            const content = e.target.result;
-            const lines = content.split('\n').filter(line => line.trim() !== '');
-            
-            if (lines.length === 0) {
-                showStatus('uploadStatus', 'O arquivo está vazio.', 'error');
-                return;
-            }
-
-            // Enviar credenciais para a API
-            showStatus('uploadStatus', 'Enviando credenciais...', 'info');
-            
-            const response = await fetch(`${API_BASE_URL}/api/upload-credentials`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    credentials: lines.map(line => line.trim()).filter(line => line !== '')
-                })
-            });
-
-            // Verificar se a resposta é JSON antes de fazer parse
-            const contentType = response.headers.get('content-type');
-            let result;
-            
-            if (contentType && contentType.includes('application/json')) {
-                result = await response.json();
-            } else {
-                // Se não for JSON, ler como texto para ver o erro
-                const text = await response.text();
-                console.error('Resposta não-JSON recebida:', text);
-                showStatus('uploadStatus', `Erro no servidor (${response.status}): A API não retornou JSON válido. Verifique se a API está funcionando corretamente.`, 'error');
-                return;
-            }
-
-            if (response.ok && result.success) {
-                // Limpar input primeiro
-                fileInput.value = '';
-                
-                // Pequeno delay para garantir que o servidor processou
-                await new Promise(resolve => setTimeout(resolve, 500));
-                
-                // Recarregar dados da API e atualizar UI
-                await loadData();
-                
-                // Forçar atualização da UI novamente para garantir
-                updateUI();
-                
-                showStatus('uploadStatus', result.message, 'success');
-            } else {
-                showStatus('uploadStatus', result.error || 'Erro ao fazer upload das credenciais', 'error');
-            }
-        } catch (error) {
-            console.error('Erro ao processar upload:', error);
-            let errorMessage = 'Erro ao processar o arquivo: ' + error.message;
-            
-            // Mensagens de erro mais amigáveis
-            if (error.message.includes('JSON')) {
-                errorMessage = 'Erro ao comunicar com o servidor. Verifique se a API está funcionando corretamente.';
-            } else if (error.message.includes('fetch')) {
-                errorMessage = 'Erro de conexão. Verifique sua conexão com a internet e se o servidor está online.';
-            }
-            
-            showStatus('uploadStatus', errorMessage, 'error');
-        }
-    };
-    reader.readAsText(file);
-}
-
-// Gerar credencial
-async function handleGenerateCredential(e) {
+generateForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-
+    
     const userName = document.getElementById('userName').value;
     const branchNumber = document.getElementById('branchNumber').value;
     const userPassword = document.getElementById('userPassword').value;
-
-    if (!userName || !branchNumber || !userPassword) {
-        alert('Por favor, preencha todos os campos.');
+    
+    // Validações
+    if (!ALLOWED_USERS.includes(userName)) {
+        alert('Usuário não permitido!');
         return;
     }
-
+    
+    if (userPassword.length !== 4 || !/^\d+$/.test(userPassword)) {
+        alert('A senha deve conter exatamente 4 dígitos numéricos!');
+        return;
+    }
+    
+    // Valida senha do usuário
+    if (!UserPasswords.validate(userName, userPassword)) {
+        alert('Senha incorreta para este usuário!');
+        return;
+    }
+    
     try {
-        // Enviar requisição para gerar credencial
-        const response = await fetch(`${API_BASE_URL}/api/generate-credential`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                userName: userName,
-                branchNumber: branchNumber,
-                userPassword: userPassword
-            })
-        });
-
-        // Verificar se a resposta é JSON antes de fazer parse
-        const contentType = response.headers.get('content-type');
-        let result;
+        // Gera credencial via API
+        const result = await Storage.generateCredential(userName, branchNumber, userPassword);
         
-        if (contentType && contentType.includes('application/json')) {
-            result = await response.json();
-        } else {
-            // Se não for JSON, ler como texto para ver o erro
-            const text = await response.text();
-            console.error('Resposta não-JSON recebida:', text);
-            alert(`Erro no servidor (${response.status}): A API não retornou JSON válido. Verifique se a API está funcionando corretamente.`);
-            return;
-        }
-
-        if (response.ok && result.success) {
-            // Recarregar dados da API
-            await loadData();
+        if (result.success) {
+            const credential = result.credential;
             
-            // Mostrar credencial gerada no card
-            showGeneratedCredential(result.credential, result.userName, result.branchNumber, result.timestamp);
-
-            // Limpar formulário
-            document.getElementById('generateForm').reset();
-        } else {
-            alert(result.error || 'Erro ao gerar credencial');
+            // Exibe resultado
+            document.getElementById('resultVpnUser').textContent = credential.vpnUser;
+            document.getElementById('resultVpnPassword').textContent = credential.vpnPassword;
+            document.getElementById('resultGeneratedBy').textContent = credential.generatedBy;
+            document.getElementById('resultBranch').textContent = credential.branch;
+            document.getElementById('resultDateTime').textContent = credential.dateTime;
+            
+            // Exibe o card ANTES de qualquer outra coisa
+            resultCard.classList.remove('hidden');
+            resultCard.style.display = 'block';
+            
+            // Limpa formulário
+            generateForm.reset();
+            
+            // Scroll para o card
+            setTimeout(() => {
+                resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 200);
+            
+            // Atualiza estatísticas
+            await updateStats();
+            await checkLowCredentialsWarning();
         }
     } catch (error) {
-        console.error('Erro ao gerar credencial:', error);
-        let errorMessage = 'Erro ao gerar credencial: ' + error.message;
-        
-        // Mensagens de erro mais amigáveis
-        if (error.message.includes('JSON')) {
-            errorMessage = 'Erro ao comunicar com o servidor. Verifique se a API está funcionando corretamente.';
-        } else if (error.message.includes('fetch')) {
-            errorMessage = 'Erro de conexão. Verifique sua conexão com a internet e se o servidor está online.';
-        }
-        
-        alert(errorMessage);
+        alert(error.message || 'Erro ao gerar credencial');
     }
-}
+});
 
-// Atualizar UI
-function updateUI() {
-    // A seção admin sempre está visível, mas o conteúdo muda baseado na autenticação
-    const adminSection = document.getElementById('adminSection');
-    adminSection.classList.remove('hidden');
-    
-    // Se já está autenticado, mostrar seção de upload
-    if (isAdmin) {
-        document.getElementById('adminAuthSection').classList.add('hidden');
-        document.getElementById('uploadSection').classList.remove('hidden');
-    } else {
-        document.getElementById('adminAuthSection').classList.remove('hidden');
-        document.getElementById('uploadSection').classList.add('hidden');
-    }
+// Exportação para Excel
+const exportBtn = document.getElementById('exportBtn');
 
-    // Atualizar estatísticas
-    const availableCount = availableCredentials.length;
-    const usedCount = usedCredentials.length;
-    const totalCount = availableCount + usedCount;
-
-    document.getElementById('availableCount').textContent = availableCount;
-    document.getElementById('usedCount').textContent = usedCount;
-    document.getElementById('totalCount').textContent = totalCount;
-
-    // Alerta de estoque baixo
-    const warningDiv = document.getElementById('lowStockWarning');
-    if (availableCount < LOW_STOCK_THRESHOLD) {
-        warningDiv.classList.remove('hidden');
-    } else {
-        warningDiv.classList.add('hidden');
-    }
-}
-
-// Mostrar credencial gerada no card
-function showGeneratedCredential(credential, userName, branchNumber, timestamp) {
-    document.getElementById('generatedCredential').textContent = credential;
-    document.getElementById('generatedUser').textContent = userName;
-    document.getElementById('generatedBranch').textContent = branchNumber;
-    document.getElementById('generatedTimestamp').textContent = timestamp;
-    
-    const card = document.getElementById('generatedCredentialCard');
-    card.classList.remove('hidden');
-    
-    // Scroll suave até o card
-    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
-
-// Exportar para Excel
-function exportToExcel() {
-    const wb = XLSX.utils.book_new();
-
-    // Aba 1: Credenciais Utilizadas
-    const usedData = [
-        ['Credencial', 'Usuário', 'Filial', 'Data/Hora de Uso']
-    ];
-
-    usedCredentials.forEach(item => {
-        usedData.push([
-            item.credential,
-            item.userName,
-            item.branchNumber,
-            item.timestamp
-        ]);
-    });
-
-    const wsUsed = XLSX.utils.aoa_to_sheet(usedData);
-    XLSX.utils.book_append_sheet(wb, wsUsed, 'Credenciais Utilizadas');
-
-    // Aba 2: Credenciais Não Utilizadas
-    const unusedData = [
-        ['Credencial']
-    ];
-
-    availableCredentials.forEach(credential => {
-        unusedData.push([credential]);
-    });
-
-    const wsUnused = XLSX.utils.aoa_to_sheet(unusedData);
-    XLSX.utils.book_append_sheet(wb, wsUnused, 'Credenciais Não Utilizadas');
-
-    // Gerar nome do arquivo com data
-    const date = new Date().toISOString().split('T')[0];
-    const fileName = `relatorio_credenciais_vpn_${date}.xlsx`;
-
-    // Salvar arquivo
-    XLSX.writeFile(wb, fileName);
-}
-
-// Funções auxiliares
-function showStatus(elementId, message, type) {
-    const element = document.getElementById(elementId);
-    element.textContent = message;
-    element.className = `status-message ${type}`;
-    setTimeout(() => {
-        element.textContent = '';
-        element.className = 'status-message';
-    }, 5000);
-}
-
-// Toggle de tema
-function toggleTheme() {
-    isDarkMode = !isDarkMode;
-    document.body.classList.toggle('dark-mode', isDarkMode);
-    updateThemeIcon();
-    // Salvar apenas preferência de tema no localStorage
-    localStorage.setItem('vpn_isDarkMode', JSON.stringify(isDarkMode));
-}
-
-function updateThemeIcon() {
-    const icon = document.querySelector('.theme-icon');
-    icon.textContent = isDarkMode ? '☀️' : '🌙';
-}
-
-// Carregar dados da API
-async function loadData() {
+exportBtn.addEventListener('click', async () => {
     try {
-        // Adicionar timestamp para evitar cache do navegador
-        const timestamp = new Date().getTime();
-        const response = await fetch(`${API_BASE_URL}/api/get-credentials?t=${timestamp}`, {
-            cache: 'no-cache',
-            headers: {
-                'Cache-Control': 'no-cache'
-            }
-        });
+        const history = await Storage.getGeneratedHistory();
         
-        // Verificar se a resposta é JSON antes de fazer parse
-        const contentType = response.headers.get('content-type');
-        let data;
-        
-        if (contentType && contentType.includes('application/json')) {
-            data = await response.json();
-        } else {
-            // Se não for JSON, ler como texto para debug
-            const text = await response.text();
-            console.error('Resposta não-JSON recebida ao carregar credenciais:', text.substring(0, 200));
-            // Em caso de erro, usar arrays vazios
-            availableCredentials = [];
-            usedCredentials = [];
-            updateUI();
+        if (history.length === 0) {
+            alert('Nenhum registro encontrado para exportar!');
             return;
         }
+        
+        // Prepara dados para Excel
+        const data = history.map(record => ({
+            'Usuário VPN': record.vpnUser,
+            'Senha VPN': record.vpnPassword,
+            'Gerado por': record.generatedBy,
+            'Filial': record.branch,
+            'Data/Hora': record.dateTime
+        }));
+        
+        // Cria workbook
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Credenciais VPN');
+        
+        // Ajusta largura das colunas
+        const colWidths = [
+            { wch: 15 }, // Usuário VPN
+            { wch: 12 }, // Senha VPN
+            { wch: 12 }, // Gerado por
+            { wch: 10 }, // Filial
+            { wch: 20 }  // Data/Hora
+        ];
+        ws['!cols'] = colWidths;
+        
+        // Exporta
+        const fileName = `relatorio_credenciais_vpn_${new Date().toISOString().split('T')[0]}.xlsx`;
+        XLSX.writeFile(wb, fileName);
+        
+        alert(`Relatório exportado com sucesso! ${history.length} registro(s) exportado(s).`);
+    } catch (error) {
+        alert('Erro ao exportar relatório: ' + error.message);
+    }
+});
 
-        if (response.ok) {
-            // Atualizar arrays de credenciais
-            const newAvailable = data.availableCredentials || [];
-            const newUsed = data.usedCredentials || [];
-            
-            // Atualizar apenas se os dados mudaram
-            if (JSON.stringify(availableCredentials) !== JSON.stringify(newAvailable) ||
-                JSON.stringify(usedCredentials) !== JSON.stringify(newUsed)) {
-                availableCredentials = newAvailable;
-                usedCredentials = newUsed;
-                updateUI();
-            } else {
-                // Mesmo assim, atualizar UI para garantir
-                updateUI();
-            }
+// Atualiza estatísticas
+async function updateStats() {
+    try {
+        const statsData = await Storage.getStats();
+        const stats = document.getElementById('stats');
+        
+        if (statsData && statsData.totalGenerated > 0) {
+            stats.innerHTML = `
+                <p><strong>Total de credenciais geradas:</strong> ${statsData.totalGenerated}</p>
+                <p><strong>Credenciais disponíveis:</strong> ${statsData.availableCredentials} de ${statsData.totalCredentials}</p>
+                <p><strong>Última geração:</strong> ${statsData.lastGeneration || 'N/A'}</p>
+            `;
         } else {
-            console.error('Erro ao carregar credenciais:', data.error);
-            // Em caso de erro, usar arrays vazios
-            availableCredentials = [];
-            usedCredentials = [];
-            updateUI();
+            stats.innerHTML = '<p>Nenhuma credencial gerada ainda.</p>';
         }
     } catch (error) {
-        console.error('Erro ao carregar credenciais:', error);
-        // Em caso de erro, usar arrays vazios
-        availableCredentials = [];
-        usedCredentials = [];
-        updateUI();
-    }
-
-    // Carregar estado de admin do localStorage (apenas para sessão)
-    const savedIsAdmin = localStorage.getItem('vpn_isAdmin');
-    if (savedIsAdmin) {
-        isAdmin = JSON.parse(savedIsAdmin);
-        if (isAdmin) {
-            document.getElementById('adminAuthSection').classList.add('hidden');
-            document.getElementById('uploadSection').classList.remove('hidden');
-        }
+        console.error('Erro ao atualizar estatísticas:', error);
+        const stats = document.getElementById('stats');
+        stats.innerHTML = '<p>Erro ao carregar estatísticas.</p>';
     }
 }
+
+// Verifica e exibe aviso de credenciais baixas
+async function checkLowCredentialsWarning() {
+    try {
+        const statsData = await Storage.getStats();
+        const warningCard = document.getElementById('warningCard');
+        const availableCount = document.getElementById('availableCount');
+        
+        if (statsData && statsData.availableCredentials <= 50) {
+            availableCount.textContent = statsData.availableCredentials;
+            warningCard.classList.remove('hidden');
+            warningCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } else {
+            warningCard.classList.add('hidden');
+        }
+    } catch (error) {
+        console.error('Erro ao verificar aviso de credenciais:', error);
+    }
+}
+
+// Gerenciamento de Modo Escuro
+const DarkMode = {
+    init: () => {
+        const savedMode = localStorage.getItem('darkMode');
+        if (savedMode === 'true') {
+            document.body.classList.add('dark-mode');
+            document.getElementById('darkModeBtn').querySelector('.dark-mode-icon').textContent = '😎';
+        } else {
+            document.getElementById('darkModeBtn').querySelector('.dark-mode-icon').textContent = '😊';
+        }
+    },
+    
+    toggle: () => {
+        const body = document.body;
+        const isDark = body.classList.contains('dark-mode');
+        const icon = document.getElementById('darkModeBtn').querySelector('.dark-mode-icon');
+        
+        if (isDark) {
+            body.classList.remove('dark-mode');
+            icon.textContent = '😊';
+            localStorage.setItem('darkMode', 'false');
+        } else {
+            body.classList.add('dark-mode');
+            icon.textContent = '😎';
+            localStorage.setItem('darkMode', 'true');
+        }
+    }
+};
+
+// Botão de modo escuro
+const darkModeBtn = document.getElementById('darkModeBtn');
+if (darkModeBtn) {
+    darkModeBtn.addEventListener('click', () => {
+        DarkMode.toggle();
+    });
+}
+
+// Inicialização
+document.addEventListener('DOMContentLoaded', async () => {
+    DarkMode.init();
+    await updateStats();
+    updateAdminUI();
+    await checkLowCredentialsWarning();
+});
