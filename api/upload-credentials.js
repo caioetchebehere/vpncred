@@ -1,7 +1,8 @@
 const { getData, initializeData, saveData } = require('./data.js');
 
 module.exports = async (req, res) => {
-    // Permitir CORS
+    // Sempre definir headers JSON primeiro
+    res.setHeader('Content-Type', 'application/json');
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -18,10 +19,15 @@ module.exports = async (req, res) => {
         await initializeData();
         const data = getData();
 
+        // Verificar se o body foi parseado corretamente
+        if (!req.body) {
+            return res.status(400).json({ error: 'Request body is required' });
+        }
+
         const { credentials } = req.body;
 
         if (!credentials || !Array.isArray(credentials)) {
-            return res.status(400).json({ error: 'Invalid credentials format' });
+            return res.status(400).json({ error: 'Invalid credentials format. Expected an array of credentials.' });
         }
 
         // Adicionar credenciais ao estoque (evitando duplicatas)
@@ -49,6 +55,9 @@ module.exports = async (req, res) => {
         });
     } catch (error) {
         console.error('Error uploading credentials:', error);
-        return res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ 
+            error: 'Internal server error',
+            message: error.message || 'An unexpected error occurred'
+        });
     }
 };

@@ -1,6 +1,7 @@
 // Armazenamento de dados usando um serviço de armazenamento JSON online
 // Suporta JSONBin.io ou pode ser configurado para usar outro serviço
 
+// Node.js 18+ tem fetch nativo no Vercel
 const JSONBIN_API_URL = process.env.JSONBIN_API_URL || 'https://api.jsonbin.io/v3/b';
 const JSONBIN_API_KEY = process.env.JSONBIN_API_KEY || '';
 const JSONBIN_BIN_ID = process.env.JSONBIN_BIN_ID || '';

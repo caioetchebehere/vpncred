@@ -1,7 +1,8 @@
 const { getData, initializeData } = require('./data.js');
 
 module.exports = async (req, res) => {
-    // Permitir CORS
+    // Sempre definir headers JSON primeiro
+    res.setHeader('Content-Type', 'application/json');
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -24,6 +25,9 @@ module.exports = async (req, res) => {
         });
     } catch (error) {
         console.error('Error getting credentials:', error);
-        return res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ 
+            error: 'Internal server error',
+            message: error.message || 'An unexpected error occurred'
+        });
     }
 };

@@ -157,7 +157,19 @@ async function handleUpload() {
                 })
             });
 
-            const result = await response.json();
+            // Verificar se a resposta é JSON antes de fazer parse
+            const contentType = response.headers.get('content-type');
+            let result;
+            
+            if (contentType && contentType.includes('application/json')) {
+                result = await response.json();
+            } else {
+                // Se não for JSON, ler como texto para ver o erro
+                const text = await response.text();
+                console.error('Resposta não-JSON recebida:', text);
+                showStatus('uploadStatus', `Erro no servidor (${response.status}): A API não retornou JSON válido. Verifique se a API está funcionando corretamente.`, 'error');
+                return;
+            }
 
             if (response.ok && result.success) {
                 // Recarregar dados da API
@@ -168,7 +180,17 @@ async function handleUpload() {
                 showStatus('uploadStatus', result.error || 'Erro ao fazer upload das credenciais', 'error');
             }
         } catch (error) {
-            showStatus('uploadStatus', 'Erro ao processar o arquivo: ' + error.message, 'error');
+            console.error('Erro ao processar upload:', error);
+            let errorMessage = 'Erro ao processar o arquivo: ' + error.message;
+            
+            // Mensagens de erro mais amigáveis
+            if (error.message.includes('JSON')) {
+                errorMessage = 'Erro ao comunicar com o servidor. Verifique se a API está funcionando corretamente.';
+            } else if (error.message.includes('fetch')) {
+                errorMessage = 'Erro de conexão. Verifique sua conexão com a internet e se o servidor está online.';
+            }
+            
+            showStatus('uploadStatus', errorMessage, 'error');
         }
     };
     reader.readAsText(file);
@@ -201,7 +223,19 @@ async function handleGenerateCredential(e) {
             })
         });
 
-        const result = await response.json();
+        // Verificar se a resposta é JSON antes de fazer parse
+        const contentType = response.headers.get('content-type');
+        let result;
+        
+        if (contentType && contentType.includes('application/json')) {
+            result = await response.json();
+        } else {
+            // Se não for JSON, ler como texto para ver o erro
+            const text = await response.text();
+            console.error('Resposta não-JSON recebida:', text);
+            alert(`Erro no servidor (${response.status}): A API não retornou JSON válido. Verifique se a API está funcionando corretamente.`);
+            return;
+        }
 
         if (response.ok && result.success) {
             // Recarregar dados da API
@@ -216,7 +250,17 @@ async function handleGenerateCredential(e) {
             alert(result.error || 'Erro ao gerar credencial');
         }
     } catch (error) {
-        alert('Erro ao gerar credencial: ' + error.message);
+        console.error('Erro ao gerar credencial:', error);
+        let errorMessage = 'Erro ao gerar credencial: ' + error.message;
+        
+        // Mensagens de erro mais amigáveis
+        if (error.message.includes('JSON')) {
+            errorMessage = 'Erro ao comunicar com o servidor. Verifique se a API está funcionando corretamente.';
+        } else if (error.message.includes('fetch')) {
+            errorMessage = 'Erro de conexão. Verifique sua conexão com a internet e se o servidor está online.';
+        }
+        
+        alert(errorMessage);
     }
 }
 
@@ -337,7 +381,23 @@ function updateThemeIcon() {
 async function loadData() {
     try {
         const response = await fetch(`${API_BASE_URL}/api/get-credentials`);
-        const data = await response.json();
+        
+        // Verificar se a resposta é JSON antes de fazer parse
+        const contentType = response.headers.get('content-type');
+        let data;
+        
+        if (contentType && contentType.includes('application/json')) {
+            data = await response.json();
+        } else {
+            // Se não for JSON, ler como texto para debug
+            const text = await response.text();
+            console.error('Resposta não-JSON recebida ao carregar credenciais:', text.substring(0, 200));
+            // Em caso de erro, usar arrays vazios
+            availableCredentials = [];
+            usedCredentials = [];
+            updateUI();
+            return;
+        }
 
         if (response.ok) {
             availableCredentials = data.availableCredentials || [];
