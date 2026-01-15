@@ -88,10 +88,25 @@ module.exports = async (req, res) => {
 
         console.log(`Processadas: ${addedCount} adicionadas, ${duplicateCount} duplicadas, ${availableCredentials.length} total`);
 
-        // Salvar dados atualizados
-        await saveData({
+        // Preparar dados para salvar
+        const dataToSave = {
             availableCredentials: availableCredentials,
             usedCredentials: data.usedCredentials || []
+        };
+        
+        console.log('Dados preparados para salvar:', {
+            availableCount: dataToSave.availableCredentials.length,
+            usedCount: dataToSave.usedCredentials.length
+        });
+
+        // Salvar dados atualizados
+        await saveData(dataToSave);
+        
+        // Verificar se os dados foram salvos corretamente
+        const savedData = getData();
+        console.log('Dados após salvar (verificação):', {
+            availableCount: (savedData.availableCredentials || []).length,
+            usedCount: (savedData.usedCredentials || []).length
         });
 
         return res.status(200).json({

@@ -119,6 +119,11 @@ async function initializeData(forceRefresh = false) {
 
 // Função para salvar dados
 async function saveData(data) {
+    console.log('Salvando dados:', {
+        availableCount: (data.availableCredentials || []).length,
+        usedCount: (data.usedCredentials || []).length
+    });
+    
     // Atualizar store global primeiro
     globalStore = { ...data };
     
@@ -128,15 +133,28 @@ async function saveData(data) {
 
     // Salvar no JSONBin (ou apenas em memória se não configurado)
     await saveToJSONBin(data);
+    
+    console.log('Dados salvos. Cache atualizado:', {
+        availableCount: (cache.availableCredentials || []).length,
+        usedCount: (cache.usedCredentials || []).length
+    });
 }
 
 // Função para obter dados atuais
 function getData() {
     // Retornar cache se disponível, senão store global, senão estrutura vazia
-    return cache || globalStore || {
+    const data = cache || globalStore || {
         availableCredentials: [],
         usedCredentials: []
     };
+    
+    console.log('getData() retornando:', {
+        availableCount: (data.availableCredentials || []).length,
+        usedCount: (data.usedCredentials || []).length,
+        source: cache ? 'cache' : (globalStore ? 'globalStore' : 'empty')
+    });
+    
+    return data;
 }
 
 module.exports = {

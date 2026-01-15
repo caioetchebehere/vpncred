@@ -192,6 +192,8 @@ async function handleUpload() {
             }
 
             if (response.ok && result.success) {
+                console.log('Upload bem-sucedido:', result);
+                
                 // Limpar input primeiro
                 fileInput.value = '';
                 
@@ -202,14 +204,27 @@ async function handleUpload() {
                 }
                 showStatus('uploadStatus', message, 'success');
                 
-                // Pequeno delay para garantir que o servidor processou
-                await new Promise(resolve => setTimeout(resolve, 500));
+                // Aguardar um pouco mais para garantir que o servidor salvou
+                await new Promise(resolve => setTimeout(resolve, 1000));
                 
-                // Recarregar dados da API e atualizar UI
+                // Invalidar qualquer cache e recarregar dados da API
+                console.log('Recarregando dados após upload...');
                 await loadData();
+                
+                // Verificar se os dados foram carregados
+                console.log('Dados após reload:', {
+                    available: availableCredentials.length,
+                    used: usedCredentials.length
+                });
                 
                 // Forçar atualização da UI novamente para garantir
                 updateUI();
+                
+                // Verificar novamente após um pequeno delay
+                setTimeout(async () => {
+                    await loadData();
+                    updateUI();
+                }, 500);
             } else {
                 const errorMsg = result?.error || result?.message || 'Erro ao fazer upload das credenciais';
                 console.error('Erro no upload:', result);
@@ -455,16 +470,23 @@ async function loadData() {
             const newAvailable = data.availableCredentials || [];
             const newUsed = data.usedCredentials || [];
             
-            // Atualizar apenas se os dados mudaram
-            if (JSON.stringify(availableCredentials) !== JSON.stringify(newAvailable) ||
-                JSON.stringify(usedCredentials) !== JSON.stringify(newUsed)) {
-                availableCredentials = newAvailable;
-                usedCredentials = newUsed;
-                updateUI();
-            } else {
-                // Mesmo assim, atualizar UI para garantir
-                updateUI();
-            }
+            console.log('Dados recebidos da API:', {
+                available: newAvailable.length,
+                used: newUsed.length,
+                previousAvailable: availableCredentials.length,
+                previousUsed: usedCredentials.length
+            });
+            
+            // Sempre atualizar, mesmo se parecer igual (pode haver diferenças não detectadas)
+            availableCredentials = newAvailable;
+            usedCredentials = newUsed;
+            
+            console.log('Arrays atualizados:', {
+                available: availableCredentials.length,
+                used: usedCredentials.length
+            });
+            
+            updateUI();
         } else {
             console.error('Erro ao carregar credenciais:', data.error);
             // Em caso de erro, usar arrays vazios

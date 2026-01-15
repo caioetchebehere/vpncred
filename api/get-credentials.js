@@ -20,6 +20,11 @@ module.exports = async (req, res) => {
         await initializeData(true);
         const data = getData();
         
+        console.log('GET /api/get-credentials - Retornando dados:', {
+            availableCount: (data.availableCredentials || []).length,
+            usedCount: (data.usedCredentials || []).length
+        });
+        
         return res.status(200).json({
             availableCredentials: data.availableCredentials || [],
             usedCredentials: data.usedCredentials || []
