@@ -103,15 +103,29 @@ async function initializeData(forceRefresh = false) {
     
     // Se forçado a atualizar ou cache expirado, recarregar
     if (forceRefresh || !cache || (now - cacheTimestamp) >= CACHE_TTL) {
+        console.log('Inicializando dados (forceRefresh:', forceRefresh, 'cache:', !!cache, ')');
+        
         // Tentar carregar do JSONBin ou usar store global
         const data = await loadFromJSONBin();
+        
+        console.log('Dados carregados:', {
+            availableCount: (data.availableCredentials || []).length,
+            usedCount: (data.usedCredentials || []).length,
+            hasJSONBin: !!(JSONBIN_BIN_ID && JSONBIN_API_KEY)
+        });
         
         // Atualizar cache
         cache = data;
         cacheTimestamp = now;
+        globalStore = data; // Garantir que globalStore também está atualizado
         
         return data;
     }
+    
+    console.log('Usando cache existente:', {
+        availableCount: (cache.availableCredentials || []).length,
+        usedCount: (cache.usedCredentials || []).length
+    });
     
     // Usar cache se ainda válido
     return cache;

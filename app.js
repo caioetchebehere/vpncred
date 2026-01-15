@@ -197,34 +197,53 @@ async function handleUpload() {
                 // Limpar input primeiro
                 fileInput.value = '';
                 
-                // Mostrar resultado detalhado
-                let message = result.message;
-                if (result.totalReceived) {
-                    message += ` (${result.totalReceived} recebidas, ${result.addedCount} adicionadas)`;
-                }
-                showStatus('uploadStatus', message, 'success');
-                
-                // Aguardar um pouco mais para garantir que o servidor salvou
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
-                // Invalidar qualquer cache e recarregar dados da API
-                console.log('Recarregando dados após upload...');
-                await loadData();
-                
-                // Verificar se os dados foram carregados
-                console.log('Dados após reload:', {
-                    available: availableCredentials.length,
-                    used: usedCredentials.length
-                });
-                
-                // Forçar atualização da UI novamente para garantir
-                updateUI();
-                
-                // Verificar novamente após um pequeno delay
-                setTimeout(async () => {
-                    await loadData();
+                // Se a resposta incluir os dados atualizados, usar diretamente
+                if (result.data && result.data.availableCredentials) {
+                    console.log('Usando dados da resposta do upload:', {
+                        available: result.data.availableCredentials.length,
+                        used: result.data.usedCredentials.length
+                    });
+                    
+                    // Atualizar arrays diretamente com os dados da resposta
+                    availableCredentials = result.data.availableCredentials;
+                    usedCredentials = result.data.usedCredentials;
+                    
+                    // Atualizar UI imediatamente
                     updateUI();
-                }, 500);
+                    
+                    // Mostrar resultado detalhado
+                    let message = result.message;
+                    if (result.totalReceived) {
+                        message += ` (${result.totalReceived} recebidas, ${result.addedCount} adicionadas)`;
+                    }
+                    showStatus('uploadStatus', message, 'success');
+                } else {
+                    // Fallback: recarregar da API se os dados não vieram na resposta
+                    console.log('Dados não incluídos na resposta, recarregando da API...');
+                    
+                    // Mostrar resultado detalhado
+                    let message = result.message;
+                    if (result.totalReceived) {
+                        message += ` (${result.totalReceived} recebidas, ${result.addedCount} adicionadas)`;
+                    }
+                    showStatus('uploadStatus', message, 'success');
+                    
+                    // Aguardar um pouco mais para garantir que o servidor salvou
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    
+                    // Invalidar qualquer cache e recarregar dados da API
+                    console.log('Recarregando dados após upload...');
+                    await loadData();
+                    
+                    // Verificar se os dados foram carregados
+                    console.log('Dados após reload:', {
+                        available: availableCredentials.length,
+                        used: usedCredentials.length
+                    });
+                    
+                    // Forçar atualização da UI novamente para garantir
+                    updateUI();
+                }
             } else {
                 const errorMsg = result?.error || result?.message || 'Erro ao fazer upload das credenciais';
                 console.error('Erro no upload:', result);

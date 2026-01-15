@@ -109,13 +109,19 @@ module.exports = async (req, res) => {
             usedCount: (savedData.usedCredentials || []).length
         });
 
+        // Retornar os dados atualizados na resposta para que o frontend possa usá-los diretamente
         return res.status(200).json({
             success: true,
             message: `${addedCount} credenciais adicionadas com sucesso!${duplicateCount > 0 ? ` (${duplicateCount} duplicadas ignoradas)` : ''}`,
             addedCount: addedCount,
             duplicateCount: duplicateCount,
             totalReceived: credentials.length,
-            totalAvailable: availableCredentials.length
+            totalAvailable: availableCredentials.length,
+            // Incluir os dados atualizados na resposta
+            data: {
+                availableCredentials: availableCredentials,
+                usedCredentials: data.usedCredentials || []
+            }
         });
     } catch (error) {
         console.error('Error uploading credentials:', error);
