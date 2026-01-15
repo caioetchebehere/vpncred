@@ -16,7 +16,8 @@ module.exports = async (req, res) => {
     }
 
     try {
-        await initializeData();
+        // Forçar atualização para garantir dados mais recentes
+        await initializeData(true);
         const data = getData();
         
         return res.status(200).json({

@@ -13,7 +13,7 @@ let globalStore = null;
 // Cache com timestamp para reduzir chamadas à API
 let cache = null;
 let cacheTimestamp = 0;
-const CACHE_TTL = 3000; // 3 segundos
+const CACHE_TTL = 1000; // 1 segundo (reduzido para atualizações mais rápidas)
 
 // Função para carregar dados do JSONBin
 async function loadFromJSONBin() {
@@ -98,26 +98,30 @@ async function saveToJSONBin(data) {
 }
 
 // Função para inicializar dados
-async function initializeData() {
+async function initializeData(forceRefresh = false) {
     const now = Date.now();
     
-    // Usar cache se ainda válido
-    if (cache && (now - cacheTimestamp) < CACHE_TTL) {
-        return cache;
+    // Se forçado a atualizar ou cache expirado, recarregar
+    if (forceRefresh || !cache || (now - cacheTimestamp) >= CACHE_TTL) {
+        // Tentar carregar do JSONBin ou usar store global
+        const data = await loadFromJSONBin();
+        
+        // Atualizar cache
+        cache = data;
+        cacheTimestamp = now;
+        
+        return data;
     }
-
-    // Tentar carregar do JSONBin ou usar store global
-    const data = await loadFromJSONBin();
     
-    // Atualizar cache
-    cache = data;
-    cacheTimestamp = now;
-
-    return data;
+    // Usar cache se ainda válido
+    return cache;
 }
 
 // Função para salvar dados
 async function saveData(data) {
+    // Atualizar store global primeiro
+    globalStore = { ...data };
+    
     // Atualizar cache
     cache = { ...data };
     cacheTimestamp = Date.now();
