@@ -1,0 +1,17 @@
+{
+  "name": "sistema-credenciais-vpn",
+  "version": "1.0.0",
+  "description": "Sistema de Gerenciamento de Credenciais VPN",
+  "main": "index.html",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "keywords": [
+    "vpn",
+    "credenciais",
+    "gerenciamento"
+  ],
+  "author": "",
+  "license": "ISC"
+}
