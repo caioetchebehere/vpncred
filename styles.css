@@ -251,6 +251,12 @@ header h1 {
     border: 1px solid #f5c6cb;
 }
 
+.status-message.info {
+    background: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
 .error-message {
     color: #dc3545;
     margin-top: 10px;
@@ -528,6 +534,13 @@ body.dark-mode .status-message.error {
     color: #ff0066;
     border-color: #ff0066;
     box-shadow: 0 0 15px rgba(255, 0, 102, 0.3);
+}
+
+body.dark-mode .status-message.info {
+    background: rgba(0, 191, 255, 0.2);
+    color: #00bfff;
+    border-color: #00bfff;
+    box-shadow: 0 0 15px rgba(0, 191, 255, 0.3);
 }
 
 body.dark-mode .error-message {

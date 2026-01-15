@@ -67,10 +67,19 @@ credential3
 - CSS3
 - JavaScript (Vanilla)
 - SheetJS (xlsx.js) para exportação Excel
-- LocalStorage para persistência de dados
+- Vercel Serverless Functions (API Backend)
+- JSONBin.io (opcional, para armazenamento persistente)
+
+## Arquitetura
+
+O sistema agora usa uma API backend hospedada no Vercel, permitindo que as credenciais sejam compartilhadas entre todos os usuários. As credenciais não são mais armazenadas localmente no navegador.
+
+### Configuração
+
+Para armazenamento persistente, configure o JSONBin.io (veja `SETUP.md` para instruções detalhadas). Sem configuração, o sistema usa armazenamento em memória (temporário).
 
 ## Notas
 
-- Os dados são armazenados no navegador (LocalStorage)
-- Para limpar os dados, limpe o cache do navegador
-- O sistema funciona completamente offline após o carregamento inicial
+- As credenciais são armazenadas no servidor (compartilhadas entre todos os usuários)
+- O estado de admin e preferência de tema ainda são armazenados localmente no navegador
+- Consulte `SETUP.md` para instruções de configuração do armazenamento persistente

@@ -37,11 +37,20 @@ let availableCredentials = [];
 let usedCredentials = [];
 let isDarkMode = false;
 
+// URL base da API (será detectada automaticamente)
+const API_BASE_URL = window.location.origin;
+
 // Inicialização
 document.addEventListener('DOMContentLoaded', () => {
     loadData();
     setupEventListeners();
-    updateUI();
+    // Carregar preferência de tema do localStorage (apenas tema, não credenciais)
+    const savedDarkMode = localStorage.getItem('vpn_isDarkMode');
+    if (savedDarkMode) {
+        isDarkMode = JSON.parse(savedDarkMode);
+        document.body.classList.toggle('dark-mode', isDarkMode);
+        updateThemeIcon();
+    }
 });
 
 // Event Listeners
@@ -58,6 +67,16 @@ function setupEventListeners() {
 
     // Geração de credenciais
     document.getElementById('generateForm').addEventListener('submit', handleGenerateCredential);
+    
+    // Preencher número da filial automaticamente quando usuário é selecionado
+    document.getElementById('userName').addEventListener('change', function() {
+        const selectedUser = this.value;
+        if (selectedUser && USER_BRANCHES[selectedUser]) {
+            document.getElementById('branchNumber').value = USER_BRANCHES[selectedUser];
+        } else {
+            document.getElementById('branchNumber').value = '';
+        }
+    });
 
     // Export
     document.getElementById('exportBtn').addEventListener('click', exportToExcel);
@@ -75,7 +94,8 @@ function handleAdminAuth(e) {
         errorDiv.textContent = '';
         document.getElementById('adminAuthSection').classList.add('hidden');
         document.getElementById('uploadSection').classList.remove('hidden');
-        saveData();
+        // Salvar apenas preferência de admin no localStorage (temporário, apenas para sessão)
+        localStorage.setItem('vpn_isAdmin', JSON.stringify(isAdmin));
     } else {
         errorDiv.textContent = 'Usuário ou senha incorretos!';
         isAdmin = false;
@@ -89,12 +109,12 @@ function handleLogoutAdmin() {
     document.getElementById('adminAuthError').textContent = '';
     document.getElementById('adminAuthSection').classList.remove('hidden');
     document.getElementById('uploadSection').classList.add('hidden');
-    saveData();
+    localStorage.removeItem('vpn_isAdmin');
 }
 
 
 // Upload de credenciais (apenas admin)
-function handleUpload() {
+async function handleUpload() {
     if (!isAdmin) {
         showStatus('uploadStatus', 'Acesso negado. Faça a autenticação de administrador primeiro.', 'error');
         return;
@@ -114,7 +134,7 @@ function handleUpload() {
     }
 
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = async function(e) {
         try {
             const content = e.target.result;
             const lines = content.split('\n').filter(line => line.trim() !== '');
@@ -124,18 +144,29 @@ function handleUpload() {
                 return;
             }
 
-            // Adicionar credenciais ao estoque
-            lines.forEach(line => {
-                const credential = line.trim();
-                if (credential && !availableCredentials.includes(credential)) {
-                    availableCredentials.push(credential);
-                }
+            // Enviar credenciais para a API
+            showStatus('uploadStatus', 'Enviando credenciais...', 'info');
+            
+            const response = await fetch(`${API_BASE_URL}/api/upload-credentials`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    credentials: lines.map(line => line.trim()).filter(line => line !== '')
+                })
             });
 
-            saveData();
-            updateUI();
-            showStatus('uploadStatus', `${lines.length} credenciais adicionadas com sucesso!`, 'success');
-            fileInput.value = '';
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                // Recarregar dados da API
+                await loadData();
+                showStatus('uploadStatus', result.message, 'success');
+                fileInput.value = '';
+            } else {
+                showStatus('uploadStatus', result.error || 'Erro ao fazer upload das credenciais', 'error');
+            }
         } catch (error) {
             showStatus('uploadStatus', 'Erro ao processar o arquivo: ' + error.message, 'error');
         }
@@ -144,7 +175,7 @@ function handleUpload() {
 }
 
 // Gerar credencial
-function handleGenerateCredential(e) {
+async function handleGenerateCredential(e) {
     e.preventDefault();
 
     const userName = document.getElementById('userName').value;
@@ -156,38 +187,37 @@ function handleGenerateCredential(e) {
         return;
     }
 
-    // Validar senha do usuário
-    const correctPassword = USER_PASSWORDS[userName];
-    if (!correctPassword || userPassword !== correctPassword) {
-        alert('Senha incorreta para este usuário. Verifique a senha e tente novamente.');
-        return;
+    try {
+        // Enviar requisição para gerar credencial
+        const response = await fetch(`${API_BASE_URL}/api/generate-credential`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                userName: userName,
+                branchNumber: branchNumber,
+                userPassword: userPassword
+            })
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+            // Recarregar dados da API
+            await loadData();
+            
+            // Mostrar credencial gerada no card
+            showGeneratedCredential(result.credential, result.userName, result.branchNumber, result.timestamp);
+
+            // Limpar formulário
+            document.getElementById('generateForm').reset();
+        } else {
+            alert(result.error || 'Erro ao gerar credencial');
+        }
+    } catch (error) {
+        alert('Erro ao gerar credencial: ' + error.message);
     }
-
-    if (availableCredentials.length === 0) {
-        alert('Não há credenciais disponíveis. Faça o upload de credenciais primeiro.');
-        return;
-    }
-
-    // Pegar a primeira credencial disponível
-    const credential = availableCredentials.shift();
-    
-    // Registrar uso
-    const usedCredential = {
-        credential: credential,
-        userName: userName,
-        branchNumber: branchNumber,
-        timestamp: new Date().toLocaleString('pt-BR')
-    };
-
-    usedCredentials.push(usedCredential);
-    saveData();
-    updateUI();
-
-    // Mostrar credencial gerada no card
-    showGeneratedCredential(credential, userName, branchNumber, usedCredential.timestamp);
-
-    // Limpar formulário
-    document.getElementById('generateForm').reset();
 }
 
 // Atualizar UI
@@ -294,7 +324,8 @@ function toggleTheme() {
     isDarkMode = !isDarkMode;
     document.body.classList.toggle('dark-mode', isDarkMode);
     updateThemeIcon();
-    saveData();
+    // Salvar apenas preferência de tema no localStorage
+    localStorage.setItem('vpn_isDarkMode', JSON.stringify(isDarkMode));
 }
 
 function updateThemeIcon() {
@@ -302,35 +333,38 @@ function updateThemeIcon() {
     icon.textContent = isDarkMode ? '☀️' : '🌙';
 }
 
-// Persistência de dados (LocalStorage)
-function saveData() {
-    localStorage.setItem('vpn_availableCredentials', JSON.stringify(availableCredentials));
-    localStorage.setItem('vpn_usedCredentials', JSON.stringify(usedCredentials));
-    localStorage.setItem('vpn_isAdmin', JSON.stringify(isAdmin));
-    localStorage.setItem('vpn_isDarkMode', JSON.stringify(isDarkMode));
-}
+// Carregar dados da API
+async function loadData() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/get-credentials`);
+        const data = await response.json();
 
-function loadData() {
-    const savedAvailable = localStorage.getItem('vpn_availableCredentials');
-    const savedUsed = localStorage.getItem('vpn_usedCredentials');
+        if (response.ok) {
+            availableCredentials = data.availableCredentials || [];
+            usedCredentials = data.usedCredentials || [];
+            updateUI();
+        } else {
+            console.error('Erro ao carregar credenciais:', data.error);
+            // Em caso de erro, usar arrays vazios
+            availableCredentials = [];
+            usedCredentials = [];
+            updateUI();
+        }
+    } catch (error) {
+        console.error('Erro ao carregar credenciais:', error);
+        // Em caso de erro, usar arrays vazios
+        availableCredentials = [];
+        usedCredentials = [];
+        updateUI();
+    }
+
+    // Carregar estado de admin do localStorage (apenas para sessão)
     const savedIsAdmin = localStorage.getItem('vpn_isAdmin');
-    const savedDarkMode = localStorage.getItem('vpn_isDarkMode');
-
-    if (savedAvailable) {
-        availableCredentials = JSON.parse(savedAvailable);
-    }
-
-    if (savedUsed) {
-        usedCredentials = JSON.parse(savedUsed);
-    }
-
     if (savedIsAdmin) {
         isAdmin = JSON.parse(savedIsAdmin);
-    }
-
-    if (savedDarkMode) {
-        isDarkMode = JSON.parse(savedDarkMode);
-        document.body.classList.toggle('dark-mode', isDarkMode);
-        updateThemeIcon();
+        if (isAdmin) {
+            document.getElementById('adminAuthSection').classList.add('hidden');
+            document.getElementById('uploadSection').classList.remove('hidden');
+        }
     }
 }
