@@ -325,7 +325,15 @@ async function handleGenerateCredential(e) {
             // Limpar formulário
             document.getElementById('generateForm').reset();
         } else {
-            alert(result.error || 'Erro ao gerar credencial');
+            let errorMsg = result.error || 'Erro ao gerar credencial';
+            
+            // Se o erro indica que precisa configurar JSONBin, mostrar mensagem mais clara
+            if (result.requiresJSONBin) {
+                errorMsg += '\n\nPor favor, configure o JSONBin.io no Vercel para persistência de dados.';
+            }
+            
+            alert(errorMsg);
+            console.error('Erro ao gerar credencial:', result);
         }
     } catch (error) {
         console.error('Erro ao gerar credencial:', error);

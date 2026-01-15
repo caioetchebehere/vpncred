@@ -16,13 +16,23 @@ module.exports = async (req, res) => {
     }
 
     try {
+        console.log('Generate credential request received');
+        console.log('Request body:', req.body);
+        
         // Forçar atualização para garantir dados mais recentes
         await initializeData(true);
         const data = getData();
+        
+        console.log('Dados carregados para geração:', {
+            availableCount: (data.availableCredentials || []).length,
+            usedCount: (data.usedCredentials || []).length,
+            hasJSONBin: !!(process.env.JSONBIN_BIN_ID && process.env.JSONBIN_API_KEY)
+        });
 
         const { userName, branchNumber, userPassword } = req.body;
 
         if (!userName || !branchNumber || !userPassword) {
+            console.error('Campos obrigatórios faltando:', { userName: !!userName, branchNumber: !!branchNumber, userPassword: !!userPassword });
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
@@ -42,12 +52,32 @@ module.exports = async (req, res) => {
 
         const correctPassword = USER_PASSWORDS[userName];
         if (!correctPassword || userPassword !== correctPassword) {
+            console.error('Senha incorreta para usuário:', userName);
             return res.status(401).json({ error: 'Senha incorreta para este usuário' });
         }
 
         const availableCredentials = data.availableCredentials || [];
+        console.log('Credenciais disponíveis:', availableCredentials.length);
+        
         if (availableCredentials.length === 0) {
-            return res.status(400).json({ error: 'Não há credenciais disponíveis' });
+            const hasJSONBin = !!(process.env.JSONBIN_BIN_ID && process.env.JSONBIN_API_KEY);
+            console.error('Nenhuma credencial disponível. Dados completos:', {
+                availableCredentials: availableCredentials,
+                dataKeys: Object.keys(data),
+                hasJSONBin: hasJSONBin,
+                globalStoreAvailable: !!globalStore,
+                globalStoreCount: globalStore ? (globalStore.availableCredentials || []).length : 0
+            });
+            
+            let errorMessage = 'Não há credenciais disponíveis';
+            if (!hasJSONBin) {
+                errorMessage += '. ATENÇÃO: JSONBin não está configurado. Os dados são perdidos entre requisições. Configure JSONBin.io para persistência.';
+            }
+            
+            return res.status(400).json({ 
+                error: errorMessage,
+                requiresJSONBin: !hasJSONBin
+            });
         }
 
         // Pegar a primeira credencial disponível

@@ -17,8 +17,14 @@ const CACHE_TTL = 1000; // 1 segundo (reduzido para atualizações mais rápidas
 
 // Função para carregar dados do JSONBin
 async function loadFromJSONBin() {
+    console.log('loadFromJSONBin chamado. JSONBin configurado:', !!(JSONBIN_BIN_ID && JSONBIN_API_KEY));
+    
     if (!JSONBIN_BIN_ID || !JSONBIN_API_KEY) {
         // Se não há configuração, usar armazenamento em memória global
+        console.log('JSONBin não configurado. Usando globalStore:', {
+            hasGlobalStore: !!globalStore,
+            availableCount: globalStore ? (globalStore.availableCredentials || []).length : 0
+        });
         return globalStore || {
             availableCredentials: [],
             usedCredentials: []
@@ -73,9 +79,17 @@ async function loadFromJSONBin() {
 async function saveToJSONBin(data) {
     // Atualizar store global primeiro
     globalStore = { ...data };
+    
+    console.log('saveToJSONBin chamado. JSONBin configurado:', !!(JSONBIN_BIN_ID && JSONBIN_API_KEY));
+    console.log('Dados sendo salvos:', {
+        availableCount: (data.availableCredentials || []).length,
+        usedCount: (data.usedCredentials || []).length
+    });
 
     if (!JSONBIN_BIN_ID || !JSONBIN_API_KEY) {
         // Se não há configuração, apenas atualizar memória global
+        console.log('JSONBin não configurado. Dados salvos apenas em memória (globalStore).');
+        console.warn('ATENÇÃO: Sem JSONBin configurado, os dados serão perdidos quando a função serverless for reiniciada!');
         return;
     }
 
