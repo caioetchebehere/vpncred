@@ -68,7 +68,7 @@ credential3
 - JavaScript (Vanilla)
 - SheetJS (xlsx.js) para exportação Excel
 - Vercel Serverless Functions (API Backend)
-- JSONBin.io (opcional, para armazenamento persistente)
+- Vercel KV (Redis) para armazenamento persistente
 
 ## Arquitetura
 
@@ -76,10 +76,10 @@ O sistema agora usa uma API backend hospedada no Vercel, permitindo que as crede
 
 ### Configuração
 
-Para armazenamento persistente, configure o JSONBin.io (veja `SETUP.md` para instruções detalhadas). Sem configuração, o sistema usa armazenamento em memória (temporário).
+Para armazenamento persistente, configure o Vercel KV (veja `CONFIGURAR_VERCEL_KV.md` para instruções detalhadas). É gratuito, nativo do Vercel e muito simples de configurar.
 
 ## Notas
 
 - As credenciais são armazenadas no servidor (compartilhadas entre todos os usuários)
 - O estado de admin e preferência de tema ainda são armazenados localmente no navegador
-- Consulte `SETUP.md` para instruções de configuração do armazenamento persistente
+- Consulte `CONFIGURAR_VERCEL_KV.md` para instruções de configuração do armazenamento persistente

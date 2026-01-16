@@ -1,211 +1,109 @@
-// Armazenamento de dados usando um serviço de armazenamento JSON online
-// Suporta JSONBin.io ou pode ser configurado para usar outro serviço
+// Armazenamento de dados usando Vercel KV (Redis nativo do Vercel)
+// Alternativa simples e gratuita que funciona nativamente no Vercel
 
-// Node.js 18+ tem fetch nativo no Vercel
-const JSONBIN_API_URL = process.env.JSONBIN_API_URL || 'https://api.jsonbin.io/v3/b';
-const JSONBIN_API_KEY = process.env.JSONBIN_API_KEY || '';
-const JSONBIN_BIN_ID = process.env.JSONBIN_BIN_ID || '';
+const { kv } = require('@vercel/kv');
 
-// Armazenamento em memória compartilhado (persiste durante a execução da função)
-// Nota: Em Serverless Functions, isso é compartilhado entre requisições na mesma instância
-let globalStore = null;
+// Chave para armazenar os dados no KV
+const KV_KEY = 'vpn_credentials';
 
-// Cache com timestamp para reduzir chamadas à API
+// Cache em memória para reduzir chamadas ao KV
 let cache = null;
 let cacheTimestamp = 0;
-const CACHE_TTL = 1000; // 1 segundo (reduzido para atualizações mais rápidas)
+const CACHE_TTL = 2000; // 2 segundos
 
-// Função para carregar dados do JSONBin
-async function loadFromJSONBin() {
-    const hasConfig = !!(JSONBIN_BIN_ID && JSONBIN_API_KEY);
-    console.log('loadFromJSONBin chamado:', {
-        hasJSONBinConfig: hasConfig,
-        hasBinId: !!JSONBIN_BIN_ID,
-        hasApiKey: !!JSONBIN_API_KEY,
-        globalStoreAvailable: !!globalStore,
-        globalStoreCount: globalStore ? (globalStore.availableCredentials || []).length : 0
-    });
-    
-    if (!JSONBIN_BIN_ID || !JSONBIN_API_KEY) {
-        // Se não há configuração, usar armazenamento em memória global
-        console.log('JSONBin não configurado. Retornando globalStore ou estrutura vazia');
-        const result = globalStore || {
-            availableCredentials: [],
-            usedCredentials: []
-        };
-        console.log('Retornando dados (sem JSONBin):', {
-            availableCount: (result.availableCredentials || []).length,
-            usedCount: (result.usedCredentials || []).length
-        });
-        return result;
-    }
+// Armazenamento em memória como fallback se KV não estiver disponível
+let memoryStore = {
+    availableCredentials: [],
+    usedCredentials: []
+};
 
+// Função para carregar dados do Vercel KV
+async function loadFromKV() {
     try {
-        // Limpar e validar o Bin ID (remover espaços e caracteres inválidos)
-        const cleanBinId = (JSONBIN_BIN_ID || '').trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
-        
-        if (!cleanBinId) {
-            console.error('Bin ID inválido ou vazio após limpeza');
-            return globalStore || {
-                availableCredentials: [],
-                usedCredentials: []
-            };
+        // Verificar se @vercel/kv está disponível
+        if (!kv) {
+            console.log('Vercel KV não disponível, usando armazenamento em memória');
+            return memoryStore;
         }
-        
-        const url = `${JSONBIN_API_URL}/${cleanBinId}/latest`;
-        console.log('Tentando carregar do JSONBin:', {
-            url: url,
-            originalBinId: JSONBIN_BIN_ID,
-            cleanBinId: cleanBinId,
-            hasApiKey: !!JSONBIN_API_KEY,
-            hasBinId: !!cleanBinId
-        });
-        
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-                'X-Master-Key': JSONBIN_API_KEY,
-                'Content-Type': 'application/json'
-            }
-        });
 
-        console.log('Resposta do JSONBin:', {
-            status: response.status,
-            ok: response.ok
-        });
-
-        if (response.ok) {
-            const jsonData = await response.json();
-            console.log('Resposta JSON do JSONBin recebida:', {
-                hasRecord: !!jsonData.record,
-                recordKeys: jsonData.record ? Object.keys(jsonData.record) : []
+        console.log('Carregando dados do Vercel KV...');
+        const data = await kv.get(KV_KEY);
+        
+        if (data) {
+            console.log('Dados carregados do KV:', {
+                availableCount: (data.availableCredentials || []).length,
+                usedCount: (data.usedCredentials || []).length
             });
             
-            let result = jsonData.record || {
-                availableCredentials: [],
-                usedCredentials: []
+            // Garantir que temos arrays válidos
+            const validatedData = {
+                availableCredentials: Array.isArray(data.availableCredentials) 
+                    ? data.availableCredentials 
+                    : [],
+                usedCredentials: Array.isArray(data.usedCredentials) 
+                    ? data.usedCredentials 
+                    : []
             };
             
-            console.log('Dados antes da validação:', {
-                availableType: typeof result.availableCredentials,
-                availableIsArray: Array.isArray(result.availableCredentials),
-                availableValue: result.availableCredentials,
-                usedType: typeof result.usedCredentials,
-                usedIsArray: Array.isArray(result.usedCredentials)
-            });
+            // Atualizar store em memória também
+            memoryStore = validatedData;
             
-            // Garantir que os arrays existem e são válidos
-            if (!Array.isArray(result.availableCredentials)) {
-                console.warn('availableCredentials não é um array, convertendo. Tipo:', typeof result.availableCredentials, 'Valor:', result.availableCredentials);
-                result.availableCredentials = [];
-            }
-            if (!Array.isArray(result.usedCredentials)) {
-                console.warn('usedCredentials não é um array, convertendo. Tipo:', typeof result.usedCredentials);
-                result.usedCredentials = [];
-            }
-            
-            console.log('Dados carregados do JSONBin (após validação):', {
-                availableCount: result.availableCredentials.length,
-                usedCount: result.usedCredentials.length,
-                firstFew: result.availableCredentials.slice(0, 3)
-            });
-            // Atualizar store global
-            globalStore = result;
-            return result;
-        } else if (response.status === 404) {
-            console.log('Bin não existe no JSONBin, criando estrutura vazia');
-            // Bin não existe, criar estrutura vazia
+            return validatedData;
+        } else {
+            console.log('Nenhum dado encontrado no KV, retornando estrutura vazia');
             const empty = {
                 availableCredentials: [],
                 usedCredentials: []
             };
-            globalStore = empty;
+            memoryStore = empty;
             return empty;
-        } else {
-            const errorText = await response.text().catch(() => 'Unable to read error');
-            console.error('Error loading from JSONBin:', {
-                status: response.status,
-                statusText: response.statusText,
-                error: errorText
-            });
-            // Retornar store global ou estrutura vazia
-            return globalStore || {
-                availableCredentials: [],
-                usedCredentials: []
-            };
         }
     } catch (error) {
-        console.error('Error loading from JSONBin (exception):', {
+        console.error('Erro ao carregar do Vercel KV:', {
             message: error.message,
             stack: error.stack
         });
-        // Retornar store global ou estrutura vazia
-        return globalStore || {
-            availableCredentials: [],
-            usedCredentials: []
-        };
+        console.log('Usando armazenamento em memória como fallback');
+        return memoryStore;
     }
 }
 
-// Função para salvar dados no JSONBin
-async function saveToJSONBin(data) {
-    // Atualizar store global primeiro
-    globalStore = { ...data };
+// Função para salvar dados no Vercel KV
+async function saveToKV(data) {
+    // Atualizar store em memória primeiro
+    memoryStore = { ...data };
     
-    console.log('saveToJSONBin chamado. JSONBin configurado:', !!(JSONBIN_BIN_ID && JSONBIN_API_KEY));
-    console.log('Dados sendo salvos:', {
-        availableCount: (data.availableCredentials || []).length,
-        usedCount: (data.usedCredentials || []).length
-    });
-
-    if (!JSONBIN_BIN_ID || !JSONBIN_API_KEY) {
-        // Se não há configuração, apenas atualizar memória global
-        console.log('JSONBin não configurado. Dados salvos apenas em memória (globalStore).');
-        console.warn('ATENÇÃO: Sem JSONBin configurado, os dados serão perdidos quando a função serverless for reiniciada!');
-        return;
-    }
-
     try {
-        // Limpar e validar o Bin ID (remover espaços e caracteres inválidos)
-        const cleanBinId = (JSONBIN_BIN_ID || '').trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
-        
-        if (!cleanBinId) {
-            console.error('Bin ID inválido ou vazio após limpeza. Não é possível salvar no JSONBin.');
+        // Verificar se @vercel/kv está disponível
+        if (!kv) {
+            console.log('Vercel KV não disponível, salvando apenas em memória');
             return;
         }
-        
-        const url = `${JSONBIN_API_URL}/${cleanBinId}`;
-        console.log('Tentando salvar no JSONBin:', {
-            url: url,
-            originalBinId: JSONBIN_BIN_ID,
-            cleanBinId: cleanBinId,
-            dataSize: JSON.stringify(data).length
-        });
-        
-        const response = await fetch(url, {
-            method: 'PUT',
-            headers: {
-                'X-Master-Key': JSONBIN_API_KEY,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
+
+        // Validar e garantir que temos arrays válidos
+        const validatedData = {
+            availableCredentials: Array.isArray(data.availableCredentials) 
+                ? data.availableCredentials 
+                : [],
+            usedCredentials: Array.isArray(data.usedCredentials) 
+                ? data.usedCredentials 
+                : []
+        };
+
+        console.log('Salvando dados no Vercel KV:', {
+            availableCount: validatedData.availableCredentials.length,
+            usedCount: validatedData.usedCredentials.length
         });
 
-        if (!response.ok) {
-            const errorText = await response.text().catch(() => 'Unable to read error');
-            console.error('Error saving to JSONBin:', {
-                status: response.status,
-                statusText: response.statusText,
-                error: errorText
-            });
-        } else {
-            console.log('Dados salvos com sucesso no JSONBin');
-        }
+        await kv.set(KV_KEY, validatedData);
+        
+        console.log('Dados salvos com sucesso no Vercel KV');
     } catch (error) {
-        console.error('Error saving to JSONBin (exception):', {
+        console.error('Erro ao salvar no Vercel KV:', {
             message: error.message,
             stack: error.stack
         });
+        console.log('Dados salvos apenas em memória (fallback)');
     }
 }
 
@@ -217,8 +115,8 @@ async function initializeData(forceRefresh = false) {
     if (forceRefresh || !cache || (now - cacheTimestamp) >= CACHE_TTL) {
         console.log('Inicializando dados (forceRefresh:', forceRefresh, 'cache:', !!cache, ')');
         
-        // Tentar carregar do JSONBin ou usar store global
-        const data = await loadFromJSONBin();
+        // Tentar carregar do KV ou usar store em memória
+        const data = await loadFromKV();
         
         // Garantir que sempre retornamos arrays válidos
         const validatedData = {
@@ -232,23 +130,20 @@ async function initializeData(forceRefresh = false) {
         
         console.log('Dados carregados e validados:', {
             availableCount: validatedData.availableCredentials.length,
-            usedCount: validatedData.usedCredentials.length,
-            hasJSONBin: !!(JSONBIN_BIN_ID && JSONBIN_API_KEY),
-            originalAvailableType: typeof data.availableCredentials,
-            originalUsedType: typeof data.usedCredentials
+            usedCount: validatedData.usedCredentials.length
         });
         
         // Atualizar cache
         cache = validatedData;
         cacheTimestamp = now;
-        globalStore = validatedData; // Garantir que globalStore também está atualizado
         
         return validatedData;
     }
     
     console.log('Usando cache existente:', {
         availableCount: (cache.availableCredentials || []).length,
-        usedCount: (cache.usedCredentials || []).length
+        usedCount: (cache.usedCredentials || []).length,
+        cacheAge: now - cacheTimestamp
     });
     
     // Usar cache se ainda válido
@@ -269,20 +164,15 @@ async function saveData(data) {
     
     console.log('Salvando dados:', {
         availableCount: validatedData.availableCredentials.length,
-        usedCount: validatedData.usedCredentials.length,
-        originalAvailableType: typeof data.availableCredentials,
-        originalUsedType: typeof data.usedCredentials
+        usedCount: validatedData.usedCredentials.length
     });
-    
-    // Atualizar store global primeiro
-    globalStore = { ...validatedData };
     
     // Atualizar cache
     cache = { ...validatedData };
     cacheTimestamp = Date.now();
 
-    // Salvar no JSONBin (ou apenas em memória se não configurado)
-    await saveToJSONBin(validatedData);
+    // Salvar no KV (ou apenas em memória se não disponível)
+    await saveToKV(validatedData);
     
     console.log('Dados salvos. Cache atualizado:', {
         availableCount: cache.availableCredentials.length,
@@ -292,8 +182,8 @@ async function saveData(data) {
 
 // Função para obter dados atuais
 function getData() {
-    // Retornar cache se disponível, senão store global, senão estrutura vazia
-    let data = cache || globalStore || {
+    // Retornar cache se disponível, senão store em memória, senão estrutura vazia
+    let data = cache || memoryStore || {
         availableCredentials: [],
         usedCredentials: []
     };
@@ -317,7 +207,7 @@ function getData() {
     console.log('getData() retornando:', {
         availableCount: data.availableCredentials.length,
         usedCount: data.usedCredentials.length,
-        source: cache ? 'cache' : (globalStore ? 'globalStore' : 'empty')
+        source: cache ? 'cache' : (memoryStore ? 'memoryStore' : 'empty')
     });
     
     return data;

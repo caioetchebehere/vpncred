@@ -16,5 +16,8 @@
     "gerenciamento"
   ],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "@vercel/kv": "^0.2.1"
+  }
 }

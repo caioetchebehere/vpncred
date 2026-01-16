@@ -11,7 +11,13 @@ O sistema está funcionando, mas os dados não persistem entre requisições por
 - ❌ Ao tentar gerar uma credencial, aparece "Não há credenciais disponíveis"
 - ❌ Os dados são perdidos quando a função serverless é reiniciada
 
-## Solução: Configurar JSONBin.io
+## Solução: Usar Vercel KV (Recomendado)
+
+O sistema agora usa **Vercel KV** (Redis nativo do Vercel) para persistência de dados. É gratuito, nativo e muito mais simples de configurar.
+
+Consulte `CONFIGURAR_VERCEL_KV.md` para instruções detalhadas.
+
+## Solução Alternativa: JSONBin.io (Descontinuada)
 
 ### Passo 1: Criar conta no JSONBin.io
 
