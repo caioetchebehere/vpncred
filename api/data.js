@@ -41,13 +41,27 @@ async function loadFromJSONBin() {
     }
 
     try {
+        // Limpar e validar o Bin ID (remover espaços e caracteres inválidos)
+        const cleanBinId = (JSONBIN_BIN_ID || '').trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+        
+        if (!cleanBinId) {
+            console.error('Bin ID inválido ou vazio após limpeza');
+            return globalStore || {
+                availableCredentials: [],
+                usedCredentials: []
+            };
+        }
+        
+        const url = `${JSONBIN_API_URL}/${cleanBinId}/latest`;
         console.log('Tentando carregar do JSONBin:', {
-            url: `${JSONBIN_API_URL}/${JSONBIN_BIN_ID}/latest`,
+            url: url,
+            originalBinId: JSONBIN_BIN_ID,
+            cleanBinId: cleanBinId,
             hasApiKey: !!JSONBIN_API_KEY,
-            hasBinId: !!JSONBIN_BIN_ID
+            hasBinId: !!cleanBinId
         });
         
-        const response = await fetch(`${JSONBIN_API_URL}/${JSONBIN_BIN_ID}/latest`, {
+        const response = await fetch(url, {
             method: 'GET',
             headers: {
                 'X-Master-Key': JSONBIN_API_KEY,
@@ -152,12 +166,23 @@ async function saveToJSONBin(data) {
     }
 
     try {
+        // Limpar e validar o Bin ID (remover espaços e caracteres inválidos)
+        const cleanBinId = (JSONBIN_BIN_ID || '').trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+        
+        if (!cleanBinId) {
+            console.error('Bin ID inválido ou vazio após limpeza. Não é possível salvar no JSONBin.');
+            return;
+        }
+        
+        const url = `${JSONBIN_API_URL}/${cleanBinId}`;
         console.log('Tentando salvar no JSONBin:', {
-            url: `${JSONBIN_API_URL}/${JSONBIN_BIN_ID}`,
+            url: url,
+            originalBinId: JSONBIN_BIN_ID,
+            cleanBinId: cleanBinId,
             dataSize: JSON.stringify(data).length
         });
         
-        const response = await fetch(`${JSONBIN_API_URL}/${JSONBIN_BIN_ID}`, {
+        const response = await fetch(url, {
             method: 'PUT',
             headers: {
                 'X-Master-Key': JSONBIN_API_KEY,
