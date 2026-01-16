@@ -18,21 +18,44 @@ module.exports = async (req, res) => {
     try {
         console.log('Generate credential request received');
         console.log('Request body:', req.body);
+        console.log('Request body type:', typeof req.body);
+        console.log('Request body keys:', req.body ? Object.keys(req.body) : 'null');
         
         // Forçar atualização para garantir dados mais recentes
         await initializeData(true);
         const data = getData();
         
+        // Garantir que temos arrays válidos
+        const availableCredentials = Array.isArray(data.availableCredentials) 
+            ? [...data.availableCredentials] 
+            : [];
+        const usedCredentials = Array.isArray(data.usedCredentials) 
+            ? [...data.usedCredentials] 
+            : [];
+        
         console.log('Dados carregados para geração:', {
-            availableCount: (data.availableCredentials || []).length,
-            usedCount: (data.usedCredentials || []).length,
-            hasJSONBin: !!(process.env.JSONBIN_BIN_ID && process.env.JSONBIN_API_KEY)
+            availableCount: availableCredentials.length,
+            usedCount: usedCredentials.length,
+            hasJSONBin: !!(process.env.JSONBIN_BIN_ID && process.env.JSONBIN_API_KEY),
+            dataType: typeof data,
+            availableIsArray: Array.isArray(data.availableCredentials)
         });
+
+        // Verificar se o body foi parseado corretamente
+        if (!req.body || typeof req.body !== 'object') {
+            console.error('Request body inválido:', req.body);
+            return res.status(400).json({ error: 'Invalid request body' });
+        }
 
         const { userName, branchNumber, userPassword } = req.body;
 
         if (!userName || !branchNumber || !userPassword) {
-            console.error('Campos obrigatórios faltando:', { userName: !!userName, branchNumber: !!branchNumber, userPassword: !!userPassword });
+            console.error('Campos obrigatórios faltando:', { 
+                userName: !!userName, 
+                branchNumber: !!branchNumber, 
+                userPassword: !!userPassword,
+                bodyKeys: Object.keys(req.body || {})
+            });
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
@@ -56,7 +79,6 @@ module.exports = async (req, res) => {
             return res.status(401).json({ error: 'Senha incorreta para este usuário' });
         }
 
-        const availableCredentials = data.availableCredentials || [];
         console.log('Credenciais disponíveis:', availableCredentials.length);
         
         if (availableCredentials.length === 0) {
@@ -65,8 +87,8 @@ module.exports = async (req, res) => {
                 availableCredentials: availableCredentials,
                 dataKeys: Object.keys(data),
                 hasJSONBin: hasJSONBin,
-                globalStoreAvailable: !!globalStore,
-                globalStoreCount: globalStore ? (globalStore.availableCredentials || []).length : 0
+                dataAvailableCount: availableCredentials.length,
+                rawData: JSON.stringify(data).substring(0, 500)
             });
             
             let errorMessage = 'Não há credenciais disponíveis';
@@ -80,8 +102,16 @@ module.exports = async (req, res) => {
             });
         }
 
-        // Pegar a primeira credencial disponível
+        // Pegar a primeira credencial disponível (remover do array)
         const credential = availableCredentials.shift();
+        
+        if (!credential || typeof credential !== 'string') {
+            console.error('Credencial inválida obtida:', credential);
+            return res.status(500).json({ 
+                error: 'Erro ao processar credencial',
+                message: 'A credencial obtida é inválida'
+            });
+        }
         
         // Registrar uso
         const usedCredential = {
@@ -91,14 +121,20 @@ module.exports = async (req, res) => {
             timestamp: new Date().toLocaleString('pt-BR')
         };
 
-        const usedCredentials = data.usedCredentials || [];
         usedCredentials.push(usedCredential);
 
         // Salvar dados atualizados
+        console.log('Salvando dados atualizados:', {
+            availableCount: availableCredentials.length,
+            usedCount: usedCredentials.length
+        });
+        
         await saveData({
             availableCredentials: availableCredentials,
             usedCredentials: usedCredentials
         });
+        
+        console.log('Dados salvos com sucesso');
 
         return res.status(200).json({
             success: true,
@@ -108,10 +144,15 @@ module.exports = async (req, res) => {
             timestamp: usedCredential.timestamp
         });
     } catch (error) {
-        console.error('Error generating credential:', error);
+        console.error('Error generating credential:', {
+            message: error.message,
+            stack: error.stack,
+            name: error.name
+        });
         return res.status(500).json({ 
             error: 'Internal server error',
-            message: error.message || 'An unexpected error occurred'
+            message: error.message || 'An unexpected error occurred',
+            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
 };

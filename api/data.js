@@ -32,6 +32,12 @@ async function loadFromJSONBin() {
     }
 
     try {
+        console.log('Tentando carregar do JSONBin:', {
+            url: `${JSONBIN_API_URL}/${JSONBIN_BIN_ID}/latest`,
+            hasApiKey: !!JSONBIN_API_KEY,
+            hasBinId: !!JSONBIN_BIN_ID
+        });
+        
         const response = await fetch(`${JSONBIN_API_URL}/${JSONBIN_BIN_ID}/latest`, {
             method: 'GET',
             headers: {
@@ -40,16 +46,37 @@ async function loadFromJSONBin() {
             }
         });
 
+        console.log('Resposta do JSONBin:', {
+            status: response.status,
+            ok: response.ok
+        });
+
         if (response.ok) {
             const data = await response.json();
-            const result = data.record || {
+            let result = data.record || {
                 availableCredentials: [],
                 usedCredentials: []
             };
+            
+            // Garantir que os arrays existem e são válidos
+            if (!Array.isArray(result.availableCredentials)) {
+                console.warn('availableCredentials não é um array, convertendo:', typeof result.availableCredentials);
+                result.availableCredentials = [];
+            }
+            if (!Array.isArray(result.usedCredentials)) {
+                console.warn('usedCredentials não é um array, convertendo:', typeof result.usedCredentials);
+                result.usedCredentials = [];
+            }
+            
+            console.log('Dados carregados do JSONBin:', {
+                availableCount: result.availableCredentials.length,
+                usedCount: result.usedCredentials.length
+            });
             // Atualizar store global
             globalStore = result;
             return result;
         } else if (response.status === 404) {
+            console.log('Bin não existe no JSONBin, criando estrutura vazia');
             // Bin não existe, criar estrutura vazia
             const empty = {
                 availableCredentials: [],
@@ -58,7 +85,12 @@ async function loadFromJSONBin() {
             globalStore = empty;
             return empty;
         } else {
-            console.error('Error loading from JSONBin:', response.status);
+            const errorText = await response.text().catch(() => 'Unable to read error');
+            console.error('Error loading from JSONBin:', {
+                status: response.status,
+                statusText: response.statusText,
+                error: errorText
+            });
             // Retornar store global ou estrutura vazia
             return globalStore || {
                 availableCredentials: [],
@@ -66,7 +98,10 @@ async function loadFromJSONBin() {
             };
         }
     } catch (error) {
-        console.error('Error loading from JSONBin:', error);
+        console.error('Error loading from JSONBin (exception):', {
+            message: error.message,
+            stack: error.stack
+        });
         // Retornar store global ou estrutura vazia
         return globalStore || {
             availableCredentials: [],
@@ -94,6 +129,11 @@ async function saveToJSONBin(data) {
     }
 
     try {
+        console.log('Tentando salvar no JSONBin:', {
+            url: `${JSONBIN_API_URL}/${JSONBIN_BIN_ID}`,
+            dataSize: JSON.stringify(data).length
+        });
+        
         const response = await fetch(`${JSONBIN_API_URL}/${JSONBIN_BIN_ID}`, {
             method: 'PUT',
             headers: {
@@ -104,10 +144,20 @@ async function saveToJSONBin(data) {
         });
 
         if (!response.ok) {
-            console.error('Error saving to JSONBin:', response.status);
+            const errorText = await response.text().catch(() => 'Unable to read error');
+            console.error('Error saving to JSONBin:', {
+                status: response.status,
+                statusText: response.statusText,
+                error: errorText
+            });
+        } else {
+            console.log('Dados salvos com sucesso no JSONBin');
         }
     } catch (error) {
-        console.error('Error saving to JSONBin:', error);
+        console.error('Error saving to JSONBin (exception):', {
+            message: error.message,
+            stack: error.stack
+        });
     }
 }
 
@@ -147,38 +197,66 @@ async function initializeData(forceRefresh = false) {
 
 // Função para salvar dados
 async function saveData(data) {
+    // Validar e garantir que temos arrays válidos
+    const validatedData = {
+        availableCredentials: Array.isArray(data.availableCredentials) 
+            ? data.availableCredentials 
+            : [],
+        usedCredentials: Array.isArray(data.usedCredentials) 
+            ? data.usedCredentials 
+            : []
+    };
+    
     console.log('Salvando dados:', {
-        availableCount: (data.availableCredentials || []).length,
-        usedCount: (data.usedCredentials || []).length
+        availableCount: validatedData.availableCredentials.length,
+        usedCount: validatedData.usedCredentials.length,
+        originalAvailableType: typeof data.availableCredentials,
+        originalUsedType: typeof data.usedCredentials
     });
     
     // Atualizar store global primeiro
-    globalStore = { ...data };
+    globalStore = { ...validatedData };
     
     // Atualizar cache
-    cache = { ...data };
+    cache = { ...validatedData };
     cacheTimestamp = Date.now();
 
     // Salvar no JSONBin (ou apenas em memória se não configurado)
-    await saveToJSONBin(data);
+    await saveToJSONBin(validatedData);
     
     console.log('Dados salvos. Cache atualizado:', {
-        availableCount: (cache.availableCredentials || []).length,
-        usedCount: (cache.usedCredentials || []).length
+        availableCount: cache.availableCredentials.length,
+        usedCount: cache.usedCredentials.length
     });
 }
 
 // Função para obter dados atuais
 function getData() {
     // Retornar cache se disponível, senão store global, senão estrutura vazia
-    const data = cache || globalStore || {
+    let data = cache || globalStore || {
         availableCredentials: [],
         usedCredentials: []
     };
     
+    // Garantir que sempre retornamos arrays válidos
+    if (!Array.isArray(data.availableCredentials)) {
+        console.warn('getData: availableCredentials não é array, corrigindo');
+        data = {
+            ...data,
+            availableCredentials: []
+        };
+    }
+    if (!Array.isArray(data.usedCredentials)) {
+        console.warn('getData: usedCredentials não é array, corrigindo');
+        data = {
+            ...data,
+            usedCredentials: []
+        };
+    }
+    
     console.log('getData() retornando:', {
-        availableCount: (data.availableCredentials || []).length,
-        usedCount: (data.usedCredentials || []).length,
+        availableCount: data.availableCredentials.length,
+        usedCount: data.usedCredentials.length,
         source: cache ? 'cache' : (globalStore ? 'globalStore' : 'empty')
     });
     
