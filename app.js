@@ -199,9 +199,19 @@ async function handleUpload() {
                 showStatus('uploadStatus', `${data.added} credenciais adicionadas com sucesso!`, 'success');
                 fileInput.value = '';
             } else {
-                const errorMsg = data.message || data.error || 'Erro ao fazer upload';
+                let errorMsg = data.message || data.error || 'Erro ao fazer upload';
+                
+                // Se for erro de configuração, adicionar instruções
+                if (data.error && data.error.includes('BLOB_READ_WRITE_TOKEN')) {
+                    errorMsg = '⚠️ BLOB_READ_WRITE_TOKEN não configurado. Configure no Vercel Dashboard → Settings → Environment Variables. Veja CONFIGURAR_BLOB.md para instruções.';
+                }
+                
                 showStatus('uploadStatus', errorMsg, 'error');
                 console.error('Erro no upload:', data);
+                
+                if (data.help) {
+                    console.log('📖 Ajuda:', data.help);
+                }
             }
         } catch (error) {
             showStatus('uploadStatus', 'Erro ao processar o arquivo: ' + error.message, 'error');
@@ -414,6 +424,11 @@ async function loadDataFromAPI() {
             updateUI();
         } else {
             console.error('Erro ao carregar dados:', data.message);
+            // Se for erro de configuração, mostrar mensagem mais clara
+            if (data.error && data.error.includes('BLOB_READ_WRITE_TOKEN')) {
+                console.error('⚠️ ATENÇÃO: Configure a variável de ambiente BLOB_READ_WRITE_TOKEN no Vercel Dashboard');
+                console.error('📖 Veja o arquivo CONFIGURAR_BLOB.md para instruções detalhadas');
+            }
         }
     } catch (error) {
         console.error('Erro ao carregar dados da API:', error);

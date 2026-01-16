@@ -85,8 +85,9 @@ export default async function handler(req, res) {
   if (!BLOB_TOKEN) {
     console.error('BLOB_READ_WRITE_TOKEN não está configurado nas variáveis de ambiente');
     return res.status(500).json({ 
-      message: 'Configuração do servidor incompleta. Verifique as variáveis de ambiente.',
-      error: 'BLOB_READ_WRITE_TOKEN não configurado'
+      message: '⚠️ BLOB_READ_WRITE_TOKEN não configurado. Acesse o Vercel Dashboard → Settings → Environment Variables e adicione a variável BLOB_READ_WRITE_TOKEN com o token do seu Blob Store. Veja o arquivo CONFIGURAR_BLOB.md para instruções detalhadas.',
+      error: 'BLOB_READ_WRITE_TOKEN não configurado',
+      help: 'https://vercel.com/docs/storage/vercel-blob'
     });
   }
 
