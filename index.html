@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gerenciamento de Credenciais VPN</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <!-- Dashboard Principal -->
+    <div id="dashboardScreen">
+        <header>
+            <h1>Sistema de Gerenciamento de Credenciais VPN</h1>
+            <button id="themeToggle" class="theme-toggle" title="Alternar modo escuro/claro">
+                <span class="theme-icon">🌙</span>
+            </button>
+        </header>
+
+        <div class="container">
+            <!-- Estatísticas -->
+            <div class="stats-container">
+                <div class="stat-card">
+                    <h3>Credenciais Disponíveis</h3>
+                    <p id="availableCount" class="stat-number">0</p>
+                    <div id="lowStockWarning" class="warning hidden">
+                        ⚠️ Menos de 50 credenciais disponíveis!
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <h3>Credenciais Utilizadas</h3>
+                    <p id="usedCount" class="stat-number">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Total de Credenciais</h3>
+                    <p id="totalCount" class="stat-number">0</p>
+                </div>
+            </div>
+
+            <!-- Upload de Credenciais (Apenas Admin) -->
+            <div id="adminSection" class="section">
+                <h2>Upload de Credenciais (Admin)</h2>
+                <div id="adminAuthSection">
+                    <div class="admin-auth-container">
+                        <p>Para fazer upload de credenciais, é necessário autenticação de administrador.</p>
+                        <form id="adminAuthForm">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="adminUsername">Usuário Admin:</label>
+                                    <input type="text" id="adminUsername" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="adminPassword">Senha Admin:</label>
+                                    <input type="password" id="adminPassword" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Autenticar</button>
+                        </form>
+                        <div id="adminAuthError" class="error-message"></div>
+                    </div>
+                </div>
+                <div id="uploadSection" class="hidden">
+                    <div class="upload-container">
+                        <input type="file" id="credentialFile" accept=".txt" class="file-input">
+                        <label for="credentialFile" class="file-label">
+                            <span>Selecionar arquivo TXT</span>
+                        </label>
+                        <button id="uploadBtn" class="btn btn-primary">Upload</button>
+                        <button id="logoutAdminBtn" class="btn btn-secondary">Sair do Modo Admin</button>
+                        <div id="uploadStatus" class="status-message"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Geração de Credenciais -->
+            <div class="section">
+                <h2>Gerar Nova Credencial</h2>
+                <form id="generateForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="userName">Nome do Usuário:</label>
+                            <select id="userName" required>
+                                <option value="">Selecione o usuário</option>
+                                <option value="Caio">Caio</option>
+                                <option value="Isadora">Isadora</option>
+                                <option value="Vanessa">Vanessa</option>
+                                <option value="Brasil">Brasil</option>
+                                <option value="Tiago">Tiago</option>
+                                <option value="Aurelio">Aurelio</option>
+                                <option value="Joathan">Joathan</option>
+                                <option value="Maicon">Maicon</option>
+                                <option value="Daniel">Daniel</option>
+                                <option value="Wagner">Wagner</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="branchNumber">Número da Filial:</label>
+                            <input type="text" id="branchNumber" required placeholder="Digite o número da filial">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="userPassword">Senha do Usuário:</label>
+                        <input type="password" id="userPassword" required placeholder="Digite a senha do usuário selecionado">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Gerar Credencial</button>
+                </form>
+                
+                <!-- Card de Credencial Gerada -->
+                <div id="generatedCredentialCard" class="credential-card hidden">
+                    <h3>Credencial Gerada com Sucesso!</h3>
+                    <div class="credential-info">
+                        <div class="info-row">
+                            <span class="info-label">Credencial:</span>
+                            <span id="generatedCredential" class="info-value"></span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Usuário:</span>
+                            <span id="generatedUser" class="info-value"></span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Filial:</span>
+                            <span id="generatedBranch" class="info-value"></span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Data/Hora:</span>
+                            <span id="generatedTimestamp" class="info-value"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Relatório -->
+            <div class="section">
+                <h2>Relatório</h2>
+                <div class="actions-bar">
+                    <button id="exportBtn" class="btn btn-success">Exportar Relatório Excel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

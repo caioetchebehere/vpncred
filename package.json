@@ -1,0 +1,14 @@
+{
+  "name": "vpn-credentials-manager",
+  "version": "1.0.0",
+  "description": "Sistema de Gerenciamento de Credenciais VPN",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "@vercel/kv": "^0.2.1"
+  },
+  "devDependencies": {
+    "vercel": "^32.0.0"
+  }
+}
