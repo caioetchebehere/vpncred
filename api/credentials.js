@@ -168,19 +168,46 @@ export default async function handler(req, res) {
           return res.status(400).json({ message: 'Não há credenciais disponíveis' });
         }
 
-        // Pegar primeira credencial
+        // Pegar primeira credencial e remover das disponíveis
         const credential = availableArray[0];
-        const updatedAvailable = availableArray.slice(1);
+        // Remover a credencial das disponíveis (usar filter para garantir remoção correta)
+        const credentialUsername = typeof credential === 'object' && credential !== null
+          ? credential.vpnUsername
+          : String(credential);
+        
+        const updatedAvailable = availableArray.filter(c => {
+          const cUsername = typeof c === 'object' && c !== null ? c.vpnUsername : String(c);
+          return cUsername !== credentialUsername;
+        });
+
+        // Verificar se realmente removeu
+        if (updatedAvailable.length === availableArray.length) {
+          console.warn('Aviso: Credencial não foi removida corretamente das disponíveis');
+          // Forçar remoção do primeiro elemento
+          updatedAvailable.shift();
+        }
 
         // Normalizar credencial (pode ser string antiga ou objeto novo)
         const credentialData = typeof credential === 'object' && credential !== null
           ? credential
           : { vpnUsername: String(credential), vpnPassword: '' };
 
-        // Registrar como usada
+        // Verificar se já não está nas usadas (evitar duplicatas)
         const used = await readBlobData(USED_CREDENTIALS_FILE) || [];
         const usedArray = Array.isArray(used) ? used : [];
         
+        // Verificar se a credencial já foi usada
+        const alreadyUsed = usedArray.some(u => {
+          const uUsername = u.vpnUsername || u.credential || '';
+          return uUsername === credentialData.vpnUsername;
+        });
+
+        if (alreadyUsed) {
+          return res.status(400).json({ 
+            message: 'Esta credencial já foi utilizada anteriormente' 
+          });
+        }
+
         const usedCredential = {
           vpnUsername: credentialData.vpnUsername,
           vpnPassword: credentialData.vpnPassword,
@@ -198,7 +225,12 @@ export default async function handler(req, res) {
           return res.status(200).json({
             success: true,
             credential: credentialData,
-            usedCredential: usedCredential
+            usedCredential: usedCredential,
+            stats: {
+              availableCount: updatedAvailable.length,
+              usedCount: usedArray.length,
+              totalCount: updatedAvailable.length + usedArray.length
+            }
           });
         } catch (writeError) {
           console.error('Erro ao salvar credenciais:', writeError);
