@@ -85,11 +85,16 @@ async function loadCredentialsFromAPI() {
             usedCredentials = data.used || [];
             updateUI();
         } else {
-            console.error('Erro ao carregar credenciais:', response.statusText);
+            const data = await response.json().catch(() => ({}));
+            if (data.setupRequired || data.error?.includes('KV') || data.error?.includes('environment variables')) {
+                console.warn('Vercel KV não configurado. Veja CONFIGURAR_KV.md para instruções.');
+            } else {
+                console.error('Erro ao carregar credenciais:', response.statusText);
+            }
         }
     } catch (error) {
         console.error('Erro ao carregar credenciais:', error);
-        showStatus('uploadStatus', 'Erro ao conectar com o servidor. Verifique sua conexão.', 'error');
+        // Não mostrar erro na UI ao carregar, apenas no console
     }
 }
 
@@ -175,7 +180,15 @@ async function handleUpload() {
                 showStatus('uploadStatus', data.message || `${lines.length} credenciais adicionadas com sucesso!`, 'success');
                 fileInput.value = '';
             } else {
-                showStatus('uploadStatus', data.error || 'Erro ao fazer upload das credenciais', 'error');
+                // Tratamento especial para erro de KV não configurado
+                if (data.setupRequired || data.error?.includes('KV') || data.error?.includes('environment variables')) {
+                    const errorMsg = '⚠️ Vercel KV não está configurado! ' + 
+                                   'Acesse o dashboard do Vercel → Settings → Storage → Connect no banco KV. ' +
+                                   'Veja o arquivo CONFIGURAR_KV.md para instruções detalhadas.';
+                    showStatus('uploadStatus', errorMsg, 'error');
+                } else {
+                    showStatus('uploadStatus', data.error || 'Erro ao fazer upload das credenciais', 'error');
+                }
             }
         } catch (error) {
             showStatus('uploadStatus', 'Erro ao processar o arquivo: ' + error.message, 'error');

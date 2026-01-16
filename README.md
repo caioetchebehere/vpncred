@@ -147,7 +147,16 @@ credential3
 
 ## Suporte
 
-Em caso de problemas:
+### ⚠️ Erro Comum: "Missing required environment variables KV_REST_API_URL"
+
+**Solução rápida:**
+1. Dashboard Vercel → Seu Projeto → **Settings** → **Storage**
+2. Clique em **Connect** no banco KV
+3. Faça um **Redeploy**
+
+📖 **Guia completo:** Veja `CONFIGURAR_KV.md` ou `SOLUCAO_ERRO.md`
+
+### Outros Problemas:
 1. Verifique se o Vercel KV está conectado ao projeto
-2. Verifique os logs no dashboard do Vercel
+2. Verifique os logs no dashboard do Vercel (Deployments → Functions)
 3. Teste a API diretamente: `https://seu-projeto.vercel.app/api/credentials?action=stats`

@@ -7,6 +7,17 @@ const ADMIN_PASSWORD = 'essilor@lux';
 const KEY_AVAILABLE = 'vpn:available';
 const KEY_USED = 'vpn:used';
 
+// Verificar se o Vercel KV está configurado
+function checkKVConfig() {
+  if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
+    return {
+      error: true,
+      message: 'Vercel KV não está configurado. Por favor, conecte o Vercel KV ao projeto em Settings → Storage no dashboard do Vercel.'
+    };
+  }
+  return { error: false };
+}
+
 export default async function handler(req, res) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -15,6 +26,16 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
+  }
+
+  // Verificar configuração do KV
+  const kvCheck = checkKVConfig();
+  if (kvCheck.error) {
+    return res.status(503).json({ 
+      error: kvCheck.message,
+      setupRequired: true,
+      instructions: 'Acesse o dashboard do Vercel → Seu Projeto → Settings → Storage → Connect no banco KV criado'
+    });
   }
 
   try {
