@@ -316,14 +316,37 @@ async function handleGenerateCredential(e) {
         }
 
         if (response.ok && result.success) {
-            // Recarregar dados da API
-            await loadData();
+            console.log('Credencial gerada com sucesso:', result);
             
-            // Mostrar credencial gerada no card
-            showGeneratedCredential(result.credential, result.userName, result.branchNumber, result.timestamp);
-
-            // Limpar formulário
-            document.getElementById('generateForm').reset();
+            // Se a resposta incluir os dados atualizados, usar diretamente
+            if (result.data && result.data.availableCredentials) {
+                console.log('Usando dados da resposta da geração:', {
+                    available: result.data.availableCredentials.length,
+                    used: result.data.usedCredentials.length
+                });
+                
+                // Atualizar arrays diretamente com os dados da resposta
+                availableCredentials = result.data.availableCredentials;
+                usedCredentials = result.data.usedCredentials;
+                
+                // Atualizar UI imediatamente
+                updateUI();
+            } else {
+                // Fallback: recarregar da API
+                await loadData();
+            }
+            
+            // Verificar se a credencial foi retornada
+            if (result.credential) {
+                // Mostrar credencial gerada no card
+                showGeneratedCredential(result.credential, result.userName, result.branchNumber, result.timestamp);
+                
+                // Limpar formulário
+                document.getElementById('generateForm').reset();
+            } else {
+                console.error('Credencial não retornada na resposta:', result);
+                alert('Erro: Credencial não foi retornada pelo servidor.');
+            }
         } else {
             let errorMsg = result.error || 'Erro ao gerar credencial';
             

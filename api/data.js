@@ -172,18 +172,30 @@ async function initializeData(forceRefresh = false) {
         // Tentar carregar do JSONBin ou usar store global
         const data = await loadFromJSONBin();
         
-        console.log('Dados carregados:', {
-            availableCount: (data.availableCredentials || []).length,
-            usedCount: (data.usedCredentials || []).length,
-            hasJSONBin: !!(JSONBIN_BIN_ID && JSONBIN_API_KEY)
+        // Garantir que sempre retornamos arrays válidos
+        const validatedData = {
+            availableCredentials: Array.isArray(data.availableCredentials) 
+                ? data.availableCredentials 
+                : [],
+            usedCredentials: Array.isArray(data.usedCredentials) 
+                ? data.usedCredentials 
+                : []
+        };
+        
+        console.log('Dados carregados e validados:', {
+            availableCount: validatedData.availableCredentials.length,
+            usedCount: validatedData.usedCredentials.length,
+            hasJSONBin: !!(JSONBIN_BIN_ID && JSONBIN_API_KEY),
+            originalAvailableType: typeof data.availableCredentials,
+            originalUsedType: typeof data.usedCredentials
         });
         
         // Atualizar cache
-        cache = data;
+        cache = validatedData;
         cacheTimestamp = now;
-        globalStore = data; // Garantir que globalStore também está atualizado
+        globalStore = validatedData; // Garantir que globalStore também está atualizado
         
-        return data;
+        return validatedData;
     }
     
     console.log('Usando cache existente:', {

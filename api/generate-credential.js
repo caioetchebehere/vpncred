@@ -129,19 +129,33 @@ module.exports = async (req, res) => {
             usedCount: usedCredentials.length
         });
         
-        await saveData({
+        const dataToSave = {
             availableCredentials: availableCredentials,
             usedCredentials: usedCredentials
+        };
+        
+        await saveData(dataToSave);
+        
+        // Verificar se os dados foram salvos corretamente
+        const savedData = getData();
+        console.log('Dados após salvar (verificação):', {
+            availableCount: (savedData.availableCredentials || []).length,
+            usedCount: (savedData.usedCredentials || []).length
         });
         
-        console.log('Dados salvos com sucesso');
+        console.log('Dados salvos com sucesso. Credencial gerada:', credential);
 
         return res.status(200).json({
             success: true,
             credential: credential,
             userName: userName,
             branchNumber: branchNumber,
-            timestamp: usedCredential.timestamp
+            timestamp: usedCredential.timestamp,
+            // Incluir dados atualizados na resposta
+            data: {
+                availableCredentials: availableCredentials,
+                usedCredentials: usedCredentials
+            }
         });
     } catch (error) {
         console.error('Error generating credential:', {
