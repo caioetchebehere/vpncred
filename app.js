@@ -149,8 +149,30 @@ async function handleUpload() {
                 return;
             }
 
-            // Enviar credenciais para API
-            const credentials = lines.map(line => line.trim()).filter(c => c);
+            // Processar credenciais: cada linha tem usuário VPN e senha VPN (separados por espaço ou tab)
+            const credentials = lines
+                .map(line => {
+                    const trimmed = line.trim();
+                    if (!trimmed) return null;
+                    
+                    // Separar por espaço, tab ou múltiplos espaços
+                    const parts = trimmed.split(/\s+/).filter(p => p);
+                    
+                    if (parts.length >= 2) {
+                        return {
+                            vpnUsername: parts[0],
+                            vpnPassword: parts[1]
+                        };
+                    } else if (parts.length === 1) {
+                        // Se tiver apenas uma parte, tratar como usuário (senha vazia)
+                        return {
+                            vpnUsername: parts[0],
+                            vpnPassword: ''
+                        };
+                    }
+                    return null;
+                })
+                .filter(c => c && c.vpnUsername);
             
             const response = await fetch(`${API_BASE}/api/credentials`, {
                 method: 'POST',
@@ -163,17 +185,27 @@ async function handleUpload() {
                 })
             });
 
-            const data = await response.json();
+            let data;
+            try {
+                data = await response.json();
+            } catch (jsonError) {
+                showStatus('uploadStatus', 'Erro ao processar resposta do servidor', 'error');
+                console.error('Erro ao fazer parse da resposta:', jsonError);
+                return;
+            }
 
             if (response.ok && data.success) {
                 await loadDataFromAPI();
                 showStatus('uploadStatus', `${data.added} credenciais adicionadas com sucesso!`, 'success');
                 fileInput.value = '';
             } else {
-                showStatus('uploadStatus', data.message || 'Erro ao fazer upload', 'error');
+                const errorMsg = data.message || data.error || 'Erro ao fazer upload';
+                showStatus('uploadStatus', errorMsg, 'error');
+                console.error('Erro no upload:', data);
             }
         } catch (error) {
             showStatus('uploadStatus', 'Erro ao processar o arquivo: ' + error.message, 'error');
+            console.error('Erro no upload:', error);
         }
     };
     reader.readAsText(file);
@@ -269,7 +301,17 @@ function updateUI() {
 
 // Mostrar credencial gerada no card
 function showGeneratedCredential(credential, userName, branchNumber, timestamp) {
-    document.getElementById('generatedCredential').textContent = credential;
+    // credential pode ser objeto {vpnUsername, vpnPassword} ou string (compatibilidade)
+    const vpnUsername = typeof credential === 'object' && credential !== null 
+        ? credential.vpnUsername || credential.username || credential 
+        : credential;
+    const vpnPassword = typeof credential === 'object' && credential !== null 
+        ? credential.vpnPassword || credential.password || '' 
+        : '';
+    
+    // Exibir usuário VPN e senha VPN separadamente
+    document.getElementById('generatedCredential').textContent = vpnUsername;
+    document.getElementById('generatedVpnPassword').textContent = vpnPassword || 'N/A';
     document.getElementById('generatedUser').textContent = userName;
     document.getElementById('generatedBranch').textContent = branchNumber;
     document.getElementById('generatedTimestamp').textContent = timestamp;
@@ -287,15 +329,21 @@ function exportToExcel() {
 
     // Aba 1: Credenciais Utilizadas
     const usedData = [
-        ['Credencial', 'Usuário', 'Filial', 'Data/Hora de Uso']
+        ['Usuário VPN', 'Senha VPN', 'Usuário do Sistema', 'Filial', 'Data/Hora de Uso']
     ];
 
     usedCredentials.forEach(item => {
+        // Compatibilidade com formato antigo (string) e novo (objeto)
+        const vpnUsername = item.vpnUsername || item.credential || '';
+        const vpnPassword = item.vpnPassword || '';
+        const systemUser = item.systemUser || item.userName || '';
+        
         usedData.push([
-            item.credential,
-            item.userName,
-            item.branchNumber,
-            item.timestamp
+            vpnUsername,
+            vpnPassword,
+            systemUser,
+            item.branchNumber || '',
+            item.timestamp || ''
         ]);
     });
 
@@ -304,11 +352,19 @@ function exportToExcel() {
 
     // Aba 2: Credenciais Não Utilizadas
     const unusedData = [
-        ['Credencial']
+        ['Usuário VPN', 'Senha VPN']
     ];
 
     availableCredentials.forEach(credential => {
-        unusedData.push([credential]);
+        // Compatibilidade com formato antigo (string) e novo (objeto)
+        if (typeof credential === 'object' && credential !== null) {
+            unusedData.push([
+                credential.vpnUsername || credential.username || '',
+                credential.vpnPassword || credential.password || ''
+            ]);
+        } else {
+            unusedData.push([String(credential), '']);
+        }
     });
 
     const wsUnused = XLSX.utils.aoa_to_sheet(unusedData);
