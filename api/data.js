@@ -17,18 +17,27 @@ const CACHE_TTL = 1000; // 1 segundo (reduzido para atualizações mais rápidas
 
 // Função para carregar dados do JSONBin
 async function loadFromJSONBin() {
-    console.log('loadFromJSONBin chamado. JSONBin configurado:', !!(JSONBIN_BIN_ID && JSONBIN_API_KEY));
+    const hasConfig = !!(JSONBIN_BIN_ID && JSONBIN_API_KEY);
+    console.log('loadFromJSONBin chamado:', {
+        hasJSONBinConfig: hasConfig,
+        hasBinId: !!JSONBIN_BIN_ID,
+        hasApiKey: !!JSONBIN_API_KEY,
+        globalStoreAvailable: !!globalStore,
+        globalStoreCount: globalStore ? (globalStore.availableCredentials || []).length : 0
+    });
     
     if (!JSONBIN_BIN_ID || !JSONBIN_API_KEY) {
         // Se não há configuração, usar armazenamento em memória global
-        console.log('JSONBin não configurado. Usando globalStore:', {
-            hasGlobalStore: !!globalStore,
-            availableCount: globalStore ? (globalStore.availableCredentials || []).length : 0
-        });
-        return globalStore || {
+        console.log('JSONBin não configurado. Retornando globalStore ou estrutura vazia');
+        const result = globalStore || {
             availableCredentials: [],
             usedCredentials: []
         };
+        console.log('Retornando dados (sem JSONBin):', {
+            availableCount: (result.availableCredentials || []).length,
+            usedCount: (result.usedCredentials || []).length
+        });
+        return result;
     }
 
     try {
@@ -52,25 +61,39 @@ async function loadFromJSONBin() {
         });
 
         if (response.ok) {
-            const data = await response.json();
-            let result = data.record || {
+            const jsonData = await response.json();
+            console.log('Resposta JSON do JSONBin recebida:', {
+                hasRecord: !!jsonData.record,
+                recordKeys: jsonData.record ? Object.keys(jsonData.record) : []
+            });
+            
+            let result = jsonData.record || {
                 availableCredentials: [],
                 usedCredentials: []
             };
             
+            console.log('Dados antes da validação:', {
+                availableType: typeof result.availableCredentials,
+                availableIsArray: Array.isArray(result.availableCredentials),
+                availableValue: result.availableCredentials,
+                usedType: typeof result.usedCredentials,
+                usedIsArray: Array.isArray(result.usedCredentials)
+            });
+            
             // Garantir que os arrays existem e são válidos
             if (!Array.isArray(result.availableCredentials)) {
-                console.warn('availableCredentials não é um array, convertendo:', typeof result.availableCredentials);
+                console.warn('availableCredentials não é um array, convertendo. Tipo:', typeof result.availableCredentials, 'Valor:', result.availableCredentials);
                 result.availableCredentials = [];
             }
             if (!Array.isArray(result.usedCredentials)) {
-                console.warn('usedCredentials não é um array, convertendo:', typeof result.usedCredentials);
+                console.warn('usedCredentials não é um array, convertendo. Tipo:', typeof result.usedCredentials);
                 result.usedCredentials = [];
             }
             
-            console.log('Dados carregados do JSONBin:', {
+            console.log('Dados carregados do JSONBin (após validação):', {
                 availableCount: result.availableCredentials.length,
-                usedCount: result.usedCredentials.length
+                usedCount: result.usedCredentials.length,
+                firstFew: result.availableCredentials.slice(0, 3)
             });
             // Atualizar store global
             globalStore = result;

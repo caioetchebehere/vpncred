@@ -21,9 +21,27 @@ module.exports = async (req, res) => {
         console.log('Request body type:', typeof req.body);
         console.log('Request body keys:', req.body ? Object.keys(req.body) : 'null');
         
+        // Verificar configuração do JSONBin
+        const hasJSONBin = !!(process.env.JSONBIN_BIN_ID && process.env.JSONBIN_API_KEY);
+        console.log('Configuração JSONBin:', {
+            hasJSONBin: hasJSONBin,
+            hasBinId: !!process.env.JSONBIN_BIN_ID,
+            hasApiKey: !!process.env.JSONBIN_API_KEY,
+            binId: process.env.JSONBIN_BIN_ID ? process.env.JSONBIN_BIN_ID.substring(0, 10) + '...' : 'não configurado'
+        });
+        
         // Forçar atualização para garantir dados mais recentes
+        console.log('Iniciando carregamento de dados...');
         await initializeData(true);
         const data = getData();
+        
+        console.log('Dados brutos obtidos:', {
+            dataType: typeof data,
+            dataKeys: Object.keys(data || {}),
+            rawAvailable: data?.availableCredentials,
+            rawAvailableType: typeof data?.availableCredentials,
+            rawAvailableIsArray: Array.isArray(data?.availableCredentials)
+        });
         
         // Garantir que temos arrays válidos
         const availableCredentials = Array.isArray(data.availableCredentials) 
@@ -33,12 +51,13 @@ module.exports = async (req, res) => {
             ? [...data.usedCredentials] 
             : [];
         
-        console.log('Dados carregados para geração:', {
+        console.log('Dados carregados para geração (após validação):', {
             availableCount: availableCredentials.length,
             usedCount: usedCredentials.length,
-            hasJSONBin: !!(process.env.JSONBIN_BIN_ID && process.env.JSONBIN_API_KEY),
+            hasJSONBin: hasJSONBin,
             dataType: typeof data,
-            availableIsArray: Array.isArray(data.availableCredentials)
+            availableIsArray: Array.isArray(data.availableCredentials),
+            firstFewCredentials: availableCredentials.slice(0, 3)
         });
 
         // Verificar se o body foi parseado corretamente
