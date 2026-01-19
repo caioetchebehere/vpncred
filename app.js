@@ -65,7 +65,14 @@ function setupEventListeners() {
     document.getElementById('generateForm').addEventListener('submit', handleGenerateCredential);
 
     // Export
-    document.getElementById('exportBtn').addEventListener('click', exportToExcel);
+    document.getElementById('exportBtn').addEventListener('click', handleExportClick);
+
+    // Copy button (event delegation para funcionar mesmo quando o card é criado dinamicamente)
+    document.addEventListener('click', function(e) {
+        if (e.target && (e.target.id === 'copyUserBtn' || e.target.closest('#copyUserBtn'))) {
+            handleCopyCredentials();
+        }
+    });
 }
 
 // Autenticação Admin
@@ -329,8 +336,60 @@ function showGeneratedCredential(credential, userName, branchNumber, timestamp) 
     const card = document.getElementById('generatedCredentialCard');
     card.classList.remove('hidden');
     
+    // Configurar botão de copiar (event listener já está configurado no setupEventListeners)
+    
     // Scroll suave até o card
     card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// Copiar credenciais (usuário e senha VPN)
+function handleCopyCredentials() {
+    const username = document.getElementById('generatedCredential').textContent;
+    const password = document.getElementById('generatedVpnPassword').textContent;
+    
+    if (!username || username === 'N/A') {
+        alert('Não há credenciais para copiar.');
+        return;
+    }
+
+    // Copiar no formato: Usuário: [username]\nSenha: [password]
+    const textToCopy = `Usuário VPN: ${username}\nSenha VPN: ${password}`;
+    
+    navigator.clipboard.writeText(textToCopy).then(() => {
+        // Feedback visual
+        const btn = document.getElementById('copyUserBtn');
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"></path></svg>';
+        btn.style.background = 'rgba(76, 175, 80, 0.3)';
+        btn.style.borderColor = 'rgba(76, 175, 80, 0.5)';
+        
+        setTimeout(() => {
+            btn.innerHTML = originalHTML;
+            btn.style.background = '';
+            btn.style.borderColor = '';
+        }, 2000);
+    }).catch(err => {
+        console.error('Erro ao copiar:', err);
+        alert('Erro ao copiar. Tente novamente.');
+    });
+}
+
+// Handle export click - solicita senha de admin
+function handleExportClick() {
+    const adminPassword = prompt('Para gerar o relatório Excel, digite a senha de administrador:');
+    
+    if (adminPassword === null) {
+        // Usuário cancelou
+        return;
+    }
+    
+    if (adminPassword !== ADMIN_PASSWORD) {
+        alert('Senha de administrador incorreta. Acesso negado.');
+        return;
+    }
+    
+    // Se a senha estiver correta, exportar
+    exportToExcel();
 }
 
 // Exportar para Excel

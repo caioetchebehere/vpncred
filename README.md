@@ -40,11 +40,20 @@ Sistema web para gerenciamento de credenciais VPN com controle de acesso, upload
 
 ### Usuário Admin
 - **Usuário:** `admin`
-- **Senha:** `######`
+- **Senha:** `essilor@lux`
 - Apenas administradores podem fazer upload de credenciais
 
 ### Usuários Permitidos
-N/A
+- Caio - Filial: 9011 - Senha: 9011
+- Isadora - Filial: 9012 - Senha: 9012
+- Vanessa - Filial: 9013 - Senha: 9013
+- Brasil - Filial: 9014 - Senha: 9014
+- Tiago - Filial: 9015 - Senha: 9015
+- Aurelio - Filial: 9016 - Senha: 9016
+- Joathan - Filial: 9017 - Senha: 9017
+- Maicon - Filial: 9018 - Senha: 9018
+- Daniel - Filial: 9019 - Senha: 9019
+- Wagner - Filial: 9020 - Senha: 9020
 
 ## 📋 Funcionalidades
 
@@ -122,4 +131,3 @@ VPN003
 - Os dados são armazenados no Vercel Blob (não mais no LocalStorage)
 - O sistema funciona online e requer conexão com a internet
 - As credenciais são compartilhadas entre todos os usuários autorizados
-
