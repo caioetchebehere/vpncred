@@ -117,7 +117,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const { action, credentials, userName, branchNumber } = req.body;
+      const { action, credentials, userName, branchNumber, computerName } = req.body;
 
       if (action === 'upload') {
         // Upload de credenciais (admin only - validação deve ser feita no frontend também)
@@ -213,6 +213,7 @@ export default async function handler(req, res) {
           vpnPassword: credentialData.vpnPassword,
           systemUser: userName || 'Desconhecido',
           branchNumber: branchNumber || 'N/A',
+          computerName: computerName || 'N/A',
           timestamp: new Date().toISOString()
         };
         usedArray.push(usedCredential);

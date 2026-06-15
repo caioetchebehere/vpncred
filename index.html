@@ -250,6 +250,10 @@
                         </div>
                     </div>
                     <div class="form-group">
+                        <label for="computerName">Nome do Computador</label>
+                        <input type="text" id="computerName" required placeholder="Ex: PC-RECEPCAO01">
+                    </div>
+                    <div class="form-group">
                         <label for="userPassword">Senha do Usuário</label>
                         <input type="password" id="userPassword" required placeholder="••••••••">
                     </div>
@@ -287,6 +291,10 @@
                         <div class="info-row">
                             <span class="info-label">Filial</span>
                             <span id="generatedBranch" class="info-value"></span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Computador</span>
+                            <span id="generatedComputerName" class="info-value"></span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">Data/Hora</span>
@@ -342,6 +350,40 @@
             <div class="modal-actions">
                 <button type="button" id="branchHistoryCancel" class="btn btn-ghost">Cancelar</button>
                 <button type="button" id="branchHistoryConfirm" class="btn btn-primary">Gerar nova credencial mesmo assim</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: confirmar zerar disponíveis -->
+    <div id="clearAvailableModal" class="modal-overlay hidden" aria-hidden="true" role="presentation">
+        <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="clearAvailableTitle">
+            <div class="modal-dialog-header">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                <h3 id="clearAvailableTitle">Zerar Credenciais Disponíveis</h3>
+            </div>
+            <p class="modal-intro">Esta ação removerá <strong>todas as <span id="clearAvailableCount">0</span> credenciais disponíveis</strong> (não utilizadas) do sistema.</p>
+            <div class="clear-available-info">
+                <ul class="clear-available-list">
+                    <li>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"></path></svg>
+                        Todas as credenciais <strong>não utilizadas</strong> serão excluídas permanentemente.
+                    </li>
+                    <li>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        As credenciais <strong>já utilizadas</strong> não serão afetadas.
+                    </li>
+                    <li>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                        Para adicionar novas credenciais, será necessário fazer um novo upload de arquivo TXT.
+                    </li>
+                </ul>
+            </div>
+            <div class="modal-actions">
+                <button type="button" id="clearAvailableCancel" class="btn btn-ghost">Cancelar</button>
+                <button type="button" id="clearAvailableConfirm" class="btn btn-danger">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"></path></svg>
+                    Confirmar e Zerar
+                </button>
             </div>
         </div>
     </div>

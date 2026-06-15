@@ -72,6 +72,18 @@ function setupEventListeners() {
     document.getElementById('logoutAdminBtn').addEventListener('click', handleLogoutAdmin);
     document.getElementById('uploadBtn').addEventListener('click', handleUpload);
     document.getElementById('clearAvailableBtn').addEventListener('click', handleClearAvailable);
+
+    const clearModal = document.getElementById('clearAvailableModal');
+    document.getElementById('clearAvailableCancel').addEventListener('click', closeClearAvailableModal);
+    document.getElementById('clearAvailableConfirm').addEventListener('click', executeClearAvailable);
+    clearModal.addEventListener('click', function(e) {
+        if (e.target === clearModal) closeClearAvailableModal();
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && !clearModal.classList.contains('hidden')) {
+            closeClearAvailableModal();
+        }
+    });
     document.getElementById('generateForm').addEventListener('submit', handleGenerateCredential);
     document.getElementById('exportBtn').addEventListener('click', handleExportClick);
 
@@ -138,17 +150,25 @@ function handleLogoutAdmin() {
 }
 
 // Zerar credenciais disponíveis (apenas admin)
-async function handleClearAvailable() {
+function handleClearAvailable() {
     if (!isAdmin) {
         showStatus('uploadStatus', 'Acesso negado. Faça a autenticação de administrador primeiro.', 'error');
         return;
     }
+    document.getElementById('clearAvailableCount').textContent = availableCredentials.length;
+    const modal = document.getElementById('clearAvailableModal');
+    modal.classList.remove('hidden');
+    modal.setAttribute('aria-hidden', 'false');
+}
 
-    const confirmed = confirm(
-        `⚠️ ATENÇÃO: Esta ação irá remover TODAS as ${availableCredentials.length} credenciais disponíveis (não utilizadas).\n\nAs credenciais já utilizadas NÃO serão afetadas.\n\nDeseja continuar?`
-    );
-    if (!confirmed) return;
+function closeClearAvailableModal() {
+    const modal = document.getElementById('clearAvailableModal');
+    modal.classList.add('hidden');
+    modal.setAttribute('aria-hidden', 'true');
+}
 
+async function executeClearAvailable() {
+    closeClearAvailableModal();
     try {
         const response = await fetch(`${API_BASE}/api/credentials`, {
             method: 'POST',
@@ -311,10 +331,10 @@ function closeBranchHistoryModal() {
 async function handleBranchHistoryConfirm() {
     const ctx = pendingGenerateContext;
     if (!ctx) return;
-    const { userName, branchNumber } = ctx;
+    const { userName, branchNumber, computerName } = ctx;
     pendingGenerateContext = null;
     hideBranchHistoryModalUI();
-    await executeGenerateCredential(userName, branchNumber);
+    await executeGenerateCredential(userName, branchNumber, computerName);
 }
 
 // Gerar credencial
@@ -323,9 +343,10 @@ async function handleGenerateCredential(e) {
 
     const userName = document.getElementById('userName').value;
     const branchNumber = document.getElementById('branchNumber').value;
+    const computerName = document.getElementById('computerName').value;
     const userPassword = document.getElementById('userPassword').value;
 
-    if (!userName || !branchNumber || !userPassword) {
+    if (!userName || !branchNumber || !computerName || !userPassword) {
         alert('Por favor, preencha todos os campos.');
         return;
     }
@@ -347,7 +368,7 @@ async function handleGenerateCredential(e) {
             const tb = new Date(b.timestamp || 0).getTime();
             return tb - ta;
         });
-        pendingGenerateContext = { userName, branchNumber };
+        pendingGenerateContext = { userName, branchNumber, computerName };
         document.getElementById('branchHistoryFilial').textContent = branchNorm;
         fillBranchHistoryTable(existingForBranch);
         const modal = document.getElementById('branchHistoryModal');
@@ -356,15 +377,15 @@ async function handleGenerateCredential(e) {
         return;
     }
 
-    await executeGenerateCredential(userName, branchNumber);
+    await executeGenerateCredential(userName, branchNumber, computerName);
 }
 
-async function executeGenerateCredential(userName, branchNumber) {
+async function executeGenerateCredential(userName, branchNumber, computerName) {
     try {
         const response = await fetch(`${API_BASE}/api/credentials`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'generate', userName, branchNumber })
+            body: JSON.stringify({ action: 'generate', userName, branchNumber, computerName })
         });
 
         const data = await response.json();
@@ -372,7 +393,7 @@ async function executeGenerateCredential(userName, branchNumber) {
         if (response.ok && data.success) {
             await loadDataFromAPI();
             const timestamp = new Date(data.usedCredential.timestamp).toLocaleString('pt-BR');
-            showGeneratedCredential(data.credential, userName, branchNumber, timestamp);
+            showGeneratedCredential(data.credential, userName, branchNumber, timestamp, computerName);
             document.getElementById('generateForm').reset();
         } else {
             alert(data.message || 'Erro ao gerar credencial');
@@ -422,7 +443,7 @@ function updateUI() {
 }
 
 // Mostrar credencial gerada
-function showGeneratedCredential(credential, userName, branchNumber, timestamp) {
+function showGeneratedCredential(credential, userName, branchNumber, timestamp, computerName) {
     const vpnUsername = typeof credential === 'object' && credential !== null
         ? credential.vpnUsername || credential.username || credential
         : credential;
@@ -434,6 +455,7 @@ function showGeneratedCredential(credential, userName, branchNumber, timestamp) 
     document.getElementById('generatedVpnPassword').textContent = vpnPassword || 'N/A';
     document.getElementById('generatedUser').textContent = userName;
     document.getElementById('generatedBranch').textContent = branchNumber;
+    document.getElementById('generatedComputerName').textContent = computerName || 'N/A';
     document.getElementById('generatedTimestamp').textContent = timestamp;
 
     const card = document.getElementById('generatedCredentialCard');
