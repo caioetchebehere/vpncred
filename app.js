@@ -189,6 +189,115 @@ async function executeClearAvailable() {
     }
 }
 
+// ── Parsers de arquivo ──────────────────────────────────────
+
+// Palavras que identificam colunas de usuário VPN
+const USER_COL_WORDS = new Set([
+    'user', 'username', 'usuario', 'vpnuser', 'vpnusername',
+    'login', 'vpn user', 'vpn username', 'usuario vpn', 'user vpn',
+    'nome usuario', 'nome', 'name', 'account', 'conta'
+]);
+
+// Palavras que identificam colunas de senha VPN
+const PASS_COL_WORDS = new Set([
+    'pass', 'password', 'senha', 'vpnpass', 'vpnpassword',
+    'vpn pass', 'vpn password', 'senha vpn', 'pass vpn', 'secret'
+]);
+
+// União de ambos — qualquer dessas palavras indica linha de cabeçalho
+const ALL_HEADER_WORDS = new Set([...USER_COL_WORDS, ...PASS_COL_WORDS]);
+
+// Normaliza célula: minúsculas, sem acentos, sem espaços extras
+function normCell(v) {
+    return String(v || '').trim().toLowerCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
+// Verifica se uma lista de células parece ser uma linha de cabeçalho
+function rowIsHeader(cells) {
+    return cells.map(normCell).some(c => ALL_HEADER_WORDS.has(c));
+}
+
+// Dado um array de células de cabeçalho, devolve { userCol, passCol }
+// Procura por nome; fallback para posição 0 e 1
+function resolveColumns(headerCells) {
+    const normalized = headerCells.map(normCell);
+    let userCol = normalized.findIndex(c => USER_COL_WORDS.has(c));
+    let passCol = normalized.findIndex(c => PASS_COL_WORDS.has(c));
+    if (userCol === -1) userCol = 0;
+    if (passCol === -1) passCol = userCol === 0 ? 1 : 0;
+    return { userCol, passCol };
+}
+
+// Extrai credenciais de uma matriz de linhas (array of arrays)
+// Detecta cabeçalho nas primeiras 10 linhas; demais linhas não-credenciais são ignoradas silenciosamente
+function extractCredentials(rows) {
+    let userCol = 0;
+    let passCol = 1;
+    let startRow = 0;
+
+    // Procura cabeçalho nas primeiras 10 linhas
+    for (let i = 0; i < Math.min(10, rows.length); i++) {
+        if (rowIsHeader(rows[i])) {
+            const cols = resolveColumns(rows[i]);
+            userCol = cols.userCol;
+            passCol = cols.passCol;
+            startRow = i + 1;
+            break;
+        }
+    }
+
+    const credentials = [];
+    for (let i = startRow; i < rows.length; i++) {
+        const row = rows[i];
+        const username = String(row[userCol] ?? '').trim();
+        const password  = String(row[passCol] ?? '').trim();
+
+        // Pula linhas vazias, linhas de cabeçalho repetidas ou células que pareçam rótulos
+        if (!username) continue;
+        if (ALL_HEADER_WORDS.has(normCell(username))) continue;
+
+        credentials.push({ vpnUsername: username, vpnPassword: password });
+    }
+    return credentials;
+}
+
+// Converte texto TXT em matriz de linhas
+function parseTxtContent(text) {
+    const rows = text.split('\n')
+        .map(line => line.trim().split(/\s+/).filter(Boolean))
+        .filter(parts => parts.length > 0);
+    return extractCredentials(rows);
+}
+
+// Converte texto CSV em matriz de linhas; detecta separador , ou ;
+function parseCsvContent(text) {
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    const sep = (lines[0] || '').includes(';') ? ';' : ',';
+    const rows = lines.map(line =>
+        line.split(sep).map(cell => cell.trim().replace(/^["']|["']$/g, ''))
+    );
+    return extractCredentials(rows);
+}
+
+// Lê planilha Excel (qualquer aba, qualquer número de colunas extras)
+function parseExcelBuffer(buffer) {
+    const workbook = XLSX.read(new Uint8Array(buffer), { type: 'array' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    return extractCredentials(rows);
+}
+
+function readFileAs(file, mode) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result);
+        reader.onerror = reject;
+        if (mode === 'buffer') reader.readAsArrayBuffer(file);
+        else reader.readAsText(file);
+    });
+}
+
 // Upload de credenciais (apenas admin)
 async function handleUpload() {
     if (!isAdmin) {
@@ -200,91 +309,74 @@ async function handleUpload() {
     const file = fileInput.files[0];
 
     if (!file) {
-        showStatus('uploadStatus', 'Por favor, selecione um arquivo TXT.', 'error');
+        showStatus('uploadStatus', 'Por favor, selecione um arquivo.', 'error');
         return;
     }
 
-    if (file.type !== 'text/plain' && !file.name.endsWith('.txt')) {
-        showStatus('uploadStatus', 'Por favor, selecione um arquivo TXT válido.', 'error');
+    const fname = file.name.toLowerCase();
+    const isExcel = fname.endsWith('.xlsx') || fname.endsWith('.xls');
+    const isCsv   = fname.endsWith('.csv');
+    const isTxt   = fname.endsWith('.txt');
+
+    if (!isExcel && !isCsv && !isTxt) {
+        showStatus('uploadStatus', 'Formato não suportado. Use TXT, CSV, XLS ou XLSX.', 'error');
         return;
     }
 
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-        try {
-            const content = e.target.result;
-            const rawLines = content.split('\n');
-
-            const parseErrors = [];
-            const credentials = [];
-
-            rawLines.forEach((line, index) => {
-                const trimmed = line.trim();
-                if (!trimmed) return; // linhas vazias são ignoradas silenciosamente
-
-                const parts = trimmed.split(/\s+/).filter(p => p);
-                if (parts.length >= 1 && parts[0]) {
-                    credentials.push(
-                        parts.length >= 2
-                            ? { vpnUsername: parts[0], vpnPassword: parts[1] }
-                            : { vpnUsername: parts[0], vpnPassword: '' }
-                    );
-                } else {
-                    parseErrors.push(index + 1);
-                }
-            });
-
-            if (credentials.length === 0) {
-                const detail = parseErrors.length > 0
-                    ? ` ${parseErrors.length} linha(s) com formato inválido (linhas: ${parseErrors.slice(0, 5).join(', ')}${parseErrors.length > 5 ? '...' : ''}).`
-                    : '';
-                showStatus('uploadStatus', `O arquivo não contém credenciais válidas.${detail}`, 'error');
+    try {
+        let credentials;
+        if (isExcel) {
+            if (typeof XLSX === 'undefined') {
+                showStatus('uploadStatus', 'Biblioteca XLSX não carregada. Recarregue a página.', 'error');
                 return;
             }
-
-            const response = await fetch(`${API_BASE}/api/credentials`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'upload', credentials })
-            });
-
-            let data;
-            try {
-                data = await response.json();
-            } catch (jsonError) {
-                showStatus('uploadStatus', 'Erro ao processar resposta do servidor.', 'error');
-                return;
-            }
-
-            if (response.ok && data.success) {
-                await loadDataFromAPI();
-
-                const parts = [];
-                if (data.added > 0) parts.push(`${data.added} adicionada(s)`);
-                if (data.skippedAlreadyAvailable > 0) parts.push(`${data.skippedAlreadyAvailable} já disponível(is)`);
-                if (data.skippedAlreadyUsed > 0) parts.push(`${data.skippedAlreadyUsed} já utilizada(s)`);
-                if (data.skippedDuplicateInFile > 0) parts.push(`${data.skippedDuplicateInFile} duplicada(s) no arquivo`);
-                if (parseErrors.length > 0) {
-                    const nums = parseErrors.slice(0, 5).join(', ') + (parseErrors.length > 5 ? '...' : '');
-                    parts.push(`${parseErrors.length} linha(s) inválida(s) [linha ${nums}]`);
-                }
-
-                const summary = parts.join(' | ');
-                const type = data.added > 0 ? 'success' : 'error';
-                showStatus('uploadStatus', summary, type, 8000);
-                if (data.added > 0) fileInput.value = '';
-            } else {
-                let errorMsg = data.message || data.error || 'Erro ao fazer upload';
-                if (data.error && data.error.includes('BLOB_READ_WRITE_TOKEN')) {
-                    errorMsg = '⚠️ BLOB_READ_WRITE_TOKEN não configurado. Configure no Vercel Dashboard → Settings → Environment Variables.';
-                }
-                showStatus('uploadStatus', errorMsg, 'error');
-            }
-        } catch (error) {
-            showStatus('uploadStatus', 'Erro ao processar o arquivo: ' + error.message, 'error');
+            credentials = parseExcelBuffer(await readFileAs(file, 'buffer'));
+        } else if (isCsv) {
+            credentials = parseCsvContent(await readFileAs(file, 'text'));
+        } else {
+            credentials = parseTxtContent(await readFileAs(file, 'text'));
         }
-    };
-    reader.readAsText(file);
+
+        if (credentials.length === 0) {
+            showStatus('uploadStatus', 'Nenhuma credencial encontrada no arquivo. Verifique se há colunas de usuário e senha.', 'error');
+            return;
+        }
+
+        const response = await fetch(`${API_BASE}/api/credentials`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'upload', credentials })
+        });
+
+        let data;
+        try {
+            data = await response.json();
+        } catch {
+            showStatus('uploadStatus', 'Erro ao processar resposta do servidor.', 'error');
+            return;
+        }
+
+        if (response.ok && data.success) {
+            await loadDataFromAPI();
+
+            const parts = [];
+            if (data.added > 0)                    parts.push(`${data.added} adicionada(s)`);
+            if (data.skippedAlreadyAvailable > 0)  parts.push(`${data.skippedAlreadyAvailable} já disponível(is)`);
+            if (data.skippedAlreadyUsed > 0)        parts.push(`${data.skippedAlreadyUsed} já utilizada(s)`);
+            if (data.skippedDuplicateInFile > 0)    parts.push(`${data.skippedDuplicateInFile} duplicada(s) no arquivo`);
+
+            showStatus('uploadStatus', parts.join(' | '), data.added > 0 ? 'success' : 'error', 8000);
+            if (data.added > 0) fileInput.value = '';
+        } else {
+            let errorMsg = data.message || data.error || 'Erro ao fazer upload';
+            if (data.error && data.error.includes('BLOB_READ_WRITE_TOKEN')) {
+                errorMsg = '⚠️ BLOB_READ_WRITE_TOKEN não configurado. Configure no Vercel Dashboard → Settings → Environment Variables.';
+            }
+            showStatus('uploadStatus', errorMsg, 'error');
+        }
+    } catch (error) {
+        showStatus('uploadStatus', 'Erro ao processar o arquivo: ' + error.message, 'error');
+    }
 }
 
 function normalizeBranch(value) {
