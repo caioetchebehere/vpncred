@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VPN Manager — Credenciais</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div id="dashboardScreen">
+        <header>
+            <div class="header-brand">
+                <div class="brand-icon">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <h1>VPN Manager</h1>
+                    <span class="brand-subtitle">Sistema de Credenciais</span>
+                </div>
+            </div>
+            <div class="header-controls">
+                <div class="connection-status">
+                    <span class="status-indicator" id="statusIndicator"></span>
+                    <span id="statusLabel">Carregando...</span>
+                </div>
+                <button id="themeToggle" class="theme-toggle" title="Alternar modo escuro/claro">
+                    <span class="theme-icon">🌙</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="container">
+
+            <!-- KPI Row + Donut Chart -->
+            <div class="kpi-row">
+                <div class="kpi-grid">
+                    <div class="kpi-card kpi-available">
+                        <div class="kpi-icon">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                        <div class="kpi-body">
+                            <span class="kpi-label">Disponíveis</span>
+                            <span id="availableCount" class="kpi-value">0</span>
+                        </div>
+                        <div id="lowStockWarning" class="low-stock-badge hidden">⚠️ Estoque baixo</div>
+                    </div>
+
+                    <div class="kpi-card kpi-used">
+                        <div class="kpi-icon">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                        </div>
+                        <div class="kpi-body">
+                            <span class="kpi-label">Utilizadas</span>
+                            <span id="usedCount" class="kpi-value">0</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card kpi-total">
+                        <div class="kpi-icon">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/>
+                            </svg>
+                        </div>
+                        <div class="kpi-body">
+                            <span class="kpi-label">Total</span>
+                            <span id="totalCount" class="kpi-value">0</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card kpi-rate">
+                        <div class="kpi-icon">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                            </svg>
+                        </div>
+                        <div class="kpi-body">
+                            <span class="kpi-label">Taxa de Uso</span>
+                            <span id="usageRate" class="kpi-value">0%</span>
+                        </div>
+                        <div class="usage-bar-wrap">
+                            <div id="usageBar" class="usage-bar" style="width:0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-card donut-card">
+                    <h3 class="chart-title">Disponibilidade</h3>
+                    <div class="donut-wrap">
+                        <canvas id="availabilityChart"></canvas>
+                        <div class="donut-center">
+                            <span id="donutPct" class="donut-pct">0%</span>
+                            <small>disponível</small>
+                        </div>
+                    </div>
+                    <div class="donut-legend">
+                        <div class="legend-item">
+                            <span class="legend-dot dot-available"></span>
+                            Disponíveis
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-dot dot-used"></span>
+                            Utilizadas
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics Section -->
+            <div class="section analytics-section">
+                <div class="section-header">
+                    <h2>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+                        Analytics de Uso
+                    </h2>
+                </div>
+                <div class="charts-row">
+                    <div class="chart-card chart-bar-card">
+                        <h3 class="chart-title">Credenciais por Usuário</h3>
+                        <div class="chart-body">
+                            <canvas id="userUsageChart"></canvas>
+                        </div>
+                        <div class="chart-empty" id="userChartEmpty">
+                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                            <span>Nenhuma credencial utilizada ainda</span>
+                        </div>
+                    </div>
+
+                    <div class="chart-card chart-line-card">
+                        <h3 class="chart-title">Histórico de Uso — últimos 30 dias</h3>
+                        <div class="chart-body">
+                            <canvas id="timelineChart"></canvas>
+                        </div>
+                        <div class="chart-empty" id="timelineChartEmpty">
+                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
+                            <span>Nenhum dado nos últimos 30 dias</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Section -->
+            <div id="adminSection" class="section">
+                <div class="section-header">
+                    <h2>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                        Painel Administrador
+                    </h2>
+                </div>
+
+                <div id="adminAuthSection">
+                    <div class="admin-auth-box">
+                        <div class="admin-auth-icon">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                            </svg>
+                        </div>
+                        <p class="admin-auth-desc">Autenticação necessária para acessar o painel de administrador.</p>
+                        <form id="adminAuthForm">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="adminUsername">Usuário Admin</label>
+                                    <input type="text" id="adminUsername" required placeholder="admin">
+                                </div>
+                                <div class="form-group">
+                                    <label for="adminPassword">Senha Admin</label>
+                                    <input type="password" id="adminPassword" required placeholder="••••••••">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4m-5-4l5-5-5-5m5 5H3"/></svg>
+                                Autenticar
+                            </button>
+                        </form>
+                        <div id="adminAuthError" class="error-message"></div>
+                    </div>
+                </div>
+
+                <div id="uploadSection" class="hidden">
+                    <div class="upload-area">
+                        <div class="upload-zone">
+                            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                            </svg>
+                            <input type="file" id="credentialFile" accept=".txt" class="file-input">
+                            <label for="credentialFile" class="file-label">
+                                <strong>Clique para selecionar</strong> ou arraste um arquivo TXT
+                            </label>
+                            <small class="upload-hint">Formato: uma credencial por linha — <code>usuário senha</code></small>
+                        </div>
+                        <div class="upload-actions">
+                            <button id="uploadBtn" class="btn btn-primary">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                                Fazer Upload
+                            </button>
+                            <button id="clearAvailableBtn" class="btn btn-danger">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"></path></svg>
+                                Zerar Disponíveis
+                            </button>
+                            <button id="logoutAdminBtn" class="btn btn-ghost">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                                Sair do Admin
+                            </button>
+                        </div>
+                        <div id="uploadStatus" class="status-message"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Generate Credential Section -->
+            <div class="section">
+                <div class="section-header">
+                    <h2>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                        Gerar Credencial VPN
+                    </h2>
+                </div>
+                <form id="generateForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="userName">Usuário</label>
+                            <select id="userName" required>
+                                <option value="">Selecione o usuário</option>
+                                <option value="Caio">Caio</option>
+                                <option value="Isadora">Isadora</option>
+                                <option value="Vanessa">Vanessa</option>
+                                <option value="Brasil">Brasil</option>
+                                <option value="Tiago">Tiago</option>
+                                <option value="Aurelio">Aurelio</option>
+                                <option value="Joathan">Joathan</option>
+                                <option value="Maicon">Maicon</option>
+                                <option value="Daniel">Daniel</option>
+                                <option value="Wagner">Wagner</option>
+                                <option value="Talita">Talita</option>
+                                <option value="Fabiana">Fabiana</option>
+                                <option value="Janaina">Janaina</option>
+                                <option value="Prisicila">Prisicila</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="branchNumber">Número da Filial</label>
+                            <input type="text" id="branchNumber" required placeholder="Ex: 9011">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="userPassword">Senha do Usuário</label>
+                        <input type="password" id="userPassword" required placeholder="••••••••">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-generate">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        Gerar Credencial
+                    </button>
+                </form>
+
+                <!-- Generated Credential Card -->
+                <div id="generatedCredentialCard" class="credential-card hidden">
+                    <div class="credential-card-header">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <h3>Credencial Gerada com Sucesso!</h3>
+                    </div>
+                    <div class="credential-info">
+                        <div class="info-row info-row-highlight">
+                            <span class="info-label">Usuário VPN</span>
+                            <div class="info-value-container">
+                                <span id="generatedCredential" class="info-value credential-highlight"></span>
+                                <button id="copyUserBtn" class="copy-btn" title="Copiar usuário e senha">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"></path></svg>
+                                    Copiar
+                                </button>
+                            </div>
+                        </div>
+                        <div class="info-row info-row-highlight">
+                            <span class="info-label">Senha VPN</span>
+                            <span id="generatedVpnPassword" class="info-value credential-highlight"></span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Usuário do Sistema</span>
+                            <span id="generatedUser" class="info-value"></span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Filial</span>
+                            <span id="generatedBranch" class="info-value"></span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Data/Hora</span>
+                            <span id="generatedTimestamp" class="info-value"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Report Section -->
+            <div class="section section-report">
+                <div class="section-header">
+                    <h2>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        Relatório
+                    </h2>
+                </div>
+                <div class="report-actions">
+                    <div class="report-info">
+                        <p>Exporta um relatório completo em Excel com credenciais utilizadas e disponíveis.</p>
+                    </div>
+                    <button id="exportBtn" class="btn btn-success">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        Exportar Relatório Excel
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Modal: credenciais já geradas para a filial -->
+    <div id="branchHistoryModal" class="modal-overlay hidden" aria-hidden="true" role="presentation">
+        <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="branchHistoryTitle">
+            <div class="modal-dialog-header">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                <h3 id="branchHistoryTitle">Credenciais já geradas para esta filial</h3>
+            </div>
+            <p class="modal-intro">Filial <strong id="branchHistoryFilial"></strong> — abaixo estão as VPN já utilizadas. Você pode cancelar ou gerar uma <strong>nova</strong> credencial.</p>
+            <div class="branch-history-table-wrap">
+                <table class="branch-history-table">
+                    <thead>
+                        <tr>
+                            <th>Usuário VPN</th>
+                            <th>Senha VPN</th>
+                            <th>Usuário sistema</th>
+                            <th>Data/Hora</th>
+                        </tr>
+                    </thead>
+                    <tbody id="branchHistoryTableBody"></tbody>
+                </table>
+            </div>
+            <div class="modal-actions">
+                <button type="button" id="branchHistoryCancel" class="btn btn-ghost">Cancelar</button>
+                <button type="button" id="branchHistoryConfirm" class="btn btn-primary">Gerar nova credencial mesmo assim</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
