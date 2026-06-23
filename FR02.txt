@@ -1,0 +1,1086 @@
+
+   ---V202505200///Versao
+     CREATE PROCEDURE [dbo].[INSERT_View_Movimento_Prod_Serv] @Ordem_Movimento INT
+         ,@Ordem_Prod_Serv INT
+         ,@Ordem_Tabela_Preco INT
+         ,@Ordem_Vendedor INT
+         ,@Ordem_Vendedor2 INT
+         ,@Ordem_Comissionado INT
+         ,@Ordem_Tamanho INT
+         ,@Ordem_Cor INT
+         ,@Ordem_Edicao INT
+         ,@Ordem_Lote INT
+         ,@Numero_Linha INT
+         ,@Quantidade_Itens MONEY
+         ,@Quantidade_Caixas_Com MONEY
+         ,@Quantidade MONEY
+         ,@Preco_Unitario MONEY
+         ,@Preco_Total_Sem_Desconto MONEY
+         ,@Desconto_Percentual MONEY
+         ,@Desconto_Percentual_Calculado MONEY
+         ,@Desconto_Valor MONEY
+         ,@Acrescimo_Valor MONEY
+         ,@Acrescimo_Percentual MONEY
+         ,@Preco_Total_Com_Desconto MONEY
+         ,@Peso_Bruto MONEY
+         ,@Cubagem MONEY
+         ,@Preco_Final MONEY
+         ,@Complemento VARCHAR(50)
+         ,@Frete_Valor MONEY
+         ,@Despesas_Valor MONEY
+         ,@IPI_Base MONEY
+         ,@IPI_Percentual MONEY
+         ,@IPI_Valor MONEY
+         ,@IPI_CST VARCHAR(2)
+         ,@ICMS_Normal_Base MONEY
+         ,@ICMS_Normal_Percentual MONEY
+         ,@ICMS_Normal_Valor MONEY
+         ,@ICMS_Normal_Perc_Reducao MONEY
+         ,@ICMS_Normal_Modalidade_Base INT
+         ,@ICMS_Subst_Base MONEY
+         ,@ICMS_Subst_Percentual MONEY
+         ,@ICMS_Carga_Media_Percentual MONEY
+         ,@ICMS_Subst_Percentual_MVA MONEY
+         ,@ICMS_Subst_Perc_Reducao MONEY
+         ,@ICMS_Subst_Valor MONEY
+         ,@ICMS_Subst_Modalidade_Base INT
+         ,@ICMS_Diferido_Valor_Operacao MONEY
+         ,@ICMS_Diferido_Percentual MONEY
+         ,@ICMS_Diferido_Valor_Diferimento MONEY
+         ,@ICMS_Retido_Base MONEY
+         ,@ICMS_Retido_Percentual MONEY
+         ,@ICMS_Retido_Valor MONEY
+         ,@ICMS_CST_CSOSN VARCHAR(3)
+         ,@Imp_Fiscal_Tipo VARCHAR(2)
+         ,@Imp_Fiscal_Percentual MONEY
+         ,@Imp_Fiscal_Base MONEY
+         ,@Imp_Fiscal_Valor MONEY
+         ,@PIS_Normal_Base MONEY
+         ,@PIS_Normal_Percentual MONEY
+         ,@PIS_Normal_Valor MONEY
+         ,@PIS_Subst_Base MONEY
+         ,@PIS_Subst_Percentual MONEY
+         ,@PIS_Subst_Valor MONEY
+         ,@PIS_COFINS_CST VARCHAR(2)
+         ,@COFINS_Normal_Base MONEY
+         ,@COFINS_Normal_Percentual MONEY
+         ,@COFINS_Normal_Valor MONEY
+         ,@COFINS_Subst_Base MONEY
+         ,@COFINS_Subst_Percentual MONEY
+         ,@COFINS_Subst_Valor MONEY
+         ,@ISS_Base MONEY
+         ,@ISS_Percentual MONEY
+         ,@ISS_Valor MONEY
+         ,@ISS_Indicador_Exigibilidade INT
+         ,@ISS_Indicador_Incentivo_Fiscal INT
+         ,@Base_II MONEY
+         ,@Desp_Aduaneira_II MONEY
+         ,@IOF_II MONEY
+         ,@Valor_II MONEY
+         ,@Valor_II_Soma_Total BIT
+         ,@Linha_Excluida BIT
+         ,@Servico_Concluido BIT
+         ,@Data_Alteracao DATETIME
+         ,@ICMS_Simples_Base MONEY
+         ,@ICMS_Simples_Percentual MONEY
+         ,@ICMS_Simples_Valor MONEY
+         ,@Ordem_Funcionario_Alteracao INT
+         ,@Validacao VARCHAR(32)
+         ,@Ordem_CFOP_Prod_NF INT
+         ,@Codigo_CFOP_Prod_NF INT
+         ,@Nome_CFOP_Prod_NF VARCHAR(50)
+         ,@Ordem_CFOP_Serv_NF INT
+         ,@Codigo_CFOP_Serv_NF INT
+         ,@Nome_CFOP_Serv_NF VARCHAR(50)
+         ,@Ordem_CFOP_Prod_CF INT
+         ,@Codigo_CFOP_Prod_CF INT
+         ,@Nome_CFOP_Prod_CF VARCHAR(50)
+         ,@Ordem_CFOP_Serv_CF INT
+         ,@Codigo_CFOP_Serv_CF INT
+         ,@Nome_CFOP_Serv_CF VARCHAR(50)
+         ,@Ordem_Unidade_Venda INT
+         ,@Codigo VARCHAR(20)
+         ,@Codigo_Ordenacao VARCHAR(20)
+         ,@Nome VARCHAR(50)
+         ,@Tipo VARCHAR(1)
+         ,@Inativo BIT
+         ,@Bloqueado_Movimento BIT
+         ,@Bloqueado_Venda BIT
+         ,@Ordem_Classe_Imposto_Saida INT
+         ,@Codigo_Classe_Imposto_Saida INT
+         ,@Ordem_Classe_Imposto_Entrada INT
+         ,@Codigo_Classe_Imposto_Entrada INT
+         ,@Desconto_Maximo MONEY
+         ,@Limita_Desconto BIT
+         ,@Controla_Estoque BIT
+         ,@Preco_Faixa_Qtde BIT
+         ,@Codigo_Classe INT
+         ,@Nome_Classe VARCHAR(25)
+         ,@Codigo_Subclasse INT
+         ,@Nome_Subclasse VARCHAR(25)
+         ,@Codigo_Grupo INT
+         ,@Nome_Grupo VARCHAR(25)
+         ,@Codigo_Familia INT
+         ,@Nome_Familia VARCHAR(25)
+         ,@Codigo_Pesquisa_1 INT
+         ,@Nome_Pesquisa_1 VARCHAR(30)
+         ,@Codigo_Pesquisa_2 INT
+         ,@Nome_Pesquisa_2 VARCHAR(30)
+         ,@Codigo_Pesquisa_3 INT
+         ,@Nome_Pesquisa_3 VARCHAR(30)
+         ,@Nome_Unidade_Venda VARCHAR(5)
+         ,@Codigo_Unidade_Venda INT
+         ,@Codigo_Fabricante INT
+         ,@Nome_Fabricante VARCHAR(20)
+         ,@Preco_Promocional MONEY
+         ,@Qtde_Estoque MONEY
+         ,@Codigo_Tamanho VARCHAR(3)
+         ,@Codigo_Cor VARCHAR(3)
+         ,@Nome_Tamanho VARCHAR(25)
+         ,@Nome_Cor VARCHAR(25)
+         ,@Estoque_Efetivado BIT
+         ,@Data_Efetivacao_Estoque DATETIME
+         ,@Qtde_Fracionada_Casas_Decimais INT
+         ,@Preco_Fracionado_Casas_Decimais INT
+         ,@Codigo_Adicional1 VARCHAR(25)
+         ,@Codigo_Adicional2 VARCHAR(25)
+         ,@Codigo_Adicional3 VARCHAR(25)
+         ,@Codigo_Adicional4 VARCHAR(25)
+         ,@Codigo_Adicional5 VARCHAR(25)
+         ,@Codigo_Barras VARCHAR(25)
+         ,@Grade_Codigo_Adicional1 VARCHAR(25)
+         ,@Grade_Codigo_Adicional2 VARCHAR(25)
+         ,@Grade_Codigo_Adicional3 VARCHAR(25)
+         ,@Grade_Codigo_Adicional4 VARCHAR(25)
+         ,@Grade_Codigo_Adicional5 VARCHAR(25)
+         ,@Grade_Codigo_Barras VARCHAR(25)
+         ,@Etiqueta VARCHAR(4)
+         ,@Permite_Complemento BIT
+         ,@Efetivado_Financeiro BIT
+         ,@Codigo_Vendedor INT
+         ,@Nome_Vendedor VARCHAR(50)
+         ,@Codigo_Vendedor2 INT
+         ,@Nome_Vendedor2 VARCHAR(50)
+         ,@Mensagem_Nota VARCHAR(1000)
+         ,@Codigo_Comissionado BIGINT
+         ,@Nome_Comissionado VARCHAR(50)
+         ,@Codigo_Edicao INT
+         ,@Nome_Edicao VARCHAR(30)
+         ,@Ordem_Classe_Imposto INT
+         ,@Quantidade_Entregue_Pedido_Venda MONEY
+         ,@Origem_Mercadoria INT
+         ,@Ordem_NCM INT
+         ,@Ordem_NBS INT
+         ,@NCM VARCHAR(8)
+         ,@NBS VARCHAR(9)
+         ,@Ex_Tipi VARCHAR(3)
+         ,@Pedido VARCHAR(15)
+         ,@Numero_Item_Pedido INT
+         ,@Carga_Tributaria MONEY
+         ,@Carga_Tributaria_Percentual MONEY
+         ,@Carga_Tributaria_Fonte VARCHAR(20)
+         ,@Sequencia_Referenciada INT
+         ,@ICMS_Desonerado_Valor MONEY
+         ,@Numero_RECOPI VARCHAR(20)
+         ,@CFOP_NF INT
+         ,@CFOP_CF INT
+         ,@COFINS_Calcula_Subs BIT
+         ,@PIS_Calcula_Subs BIT
+         ,@FCI VARCHAR(36)
+         ,@FCI_Perc_Importado MONEY
+         ,@FCI_Gerar_Calcular BIT
+         ,@Medicamento BIT
+         ,@Ordem_Tabela_PMC INT
+         ,@Preco_PMC MONEY
+         ,@ICMS_Motivo_Desoneracao VARCHAR(2)
+         ,@Observacao VARCHAR(500)
+         ,@Percentual_Devolvido MONEY
+         ,@IPI_Valor_Devolvido MONEY
+         ,@Diferenca_Cupom MONEY
+         ,@Comissao_Perc MONEY
+         ,@Comissao_Sobrepoe BIT
+         ,@Comissao_Sobrepoe_Tipo VARCHAR(1)
+         ,@Comissao_Valor MONEY
+         ,@Comissao_Vendedor1 MONEY
+         ,@Comissao_Vendedor2 MONEY
+         ,@Comissao_Comissionado MONEY
+         ,@Nome_Tabela_Preco VARCHAR(15)
+         ,@Numero_Ordem_Servico INT
+         ,@Cod_Classifica_Serv VARCHAR(5)
+         ,@Totalizador_Parcial VARCHAR(8)
+         ,@Valida_R05 VARCHAR(32)
+         ,@Ordem_Tabela_Preco_Custo INTEGER
+         ,@Preco_Custo MONEY
+         ,@Ordem_Tabela_Preco_Custo_Medio INTEGER
+         ,@Preco_Custo_Medio MONEY
+         ,@Carga_Tributaria_Zero_Nao_Mostrar BIT
+         ,@Ordem_Tecnico1 INT
+         ,@Ordem_Tecnico2 INT
+         ,@Frete_Valor_Separado MONEY
+         ,@Codigo_Tecnico1 INT
+         ,@Nome_Tecnico1 VARCHAR(50)
+         ,@Codigo_Tecnico2 INT
+         ,@Nome_Tecnico2 VARCHAR(50)
+         ,@ICMS_Retido_Modalidade_Base INT
+         ,@ICMS_Diferido_Modalidade_Base INT
+         ,@ICMS_Diferido_Base MONEY
+         ,@ICMS_Diferido_Normal_Valor MONEY
+         ,@ICMS_Diferido_Normal_Percentual MONEY
+         ,@Utilizou_Preco_Promocional BIT
+         ,@ICMS_Normal_Base_Sem_Reducao MONEY = 0
+         ,@ICMS_Subst_Base_Sem_Reducao MONEY = 0
+         ,@Preco_Final_Sem_Frete MONEY = 0
+         ,@Preco_Por_Caixa MONEY = 0
+         ,@Comissao_Tecnico1 MONEY = 0
+         ,@Comissao_Tecnico2 MONEY = 0
+         ,@Estoque_Desefetivado BIT = 0
+         ,@Data_Desefetivacao_Estoque DATETIME = NULL
+         ,@Data_Passou_Efetivacao_Estoque DATETIME = NULL
+         ,@Data_Passou_Desefetivacao_Estoque DATETIME = NULL
+         ,@Estoque_Efetivado_OS BIT = 0
+         ,@Carga_Tributaria_Federal_Perc MONEY = 0
+         ,@Carga_Tributaria_Federal_Valor MONEY = 0
+         ,@Carga_Tributaria_Estadual_Perc MONEY = 0
+         ,@Carga_Tributaria_Estadual_Valor MONEY = 0
+         ,@Carga_Tributaria_Municipal_Perc MONEY = 0
+         ,@Carga_Tributaria_Municipal_Valor MONEY = 0
+         ,@Carga_Tributaria_Chave VARCHAR(5) = ''
+         ,@Carga_Tributaria_Fonte2 VARCHAR(34) = ''
+         ,@Preco_Unitario_Original MONEY = NULL
+         ,@Excluido_Pelo_Shop BIT = 0
+         ,@Natureza_Operacao_ISSQN INT = 0
+         ,@Codigo_Tributacao_ISS VARCHAR(20) = ''
+         ,@ICMS_Norm_Omitir_Opcionais_51 BIT = 0
+         ,@Grade_Bloqueado_Venda BIT = 0
+         ,@Grade_Bloqueado_Movimento BIT = 0
+         ,@ICMS_Normal_Subtrair_Valor_Desonerado_Total_Nota BIT = 0
+         ,@ICMS_Normal_Percentual_Desoneracao MONEY = 0
+         ,@Codigo_Enquadramento_IPI INT = 0
+         ,@Ordem_Enquadramento_IPI INT = 0
+         ,@Nome_NCM VARCHAR(50) = ''
+         ,@Nome_Classe_Imposto_Saida VARCHAR(50) = ''
+         ,@Nome_Classe_Imposto_Entrada VARCHAR(50) = ''
+         ,@ICMS_Partilhado_Base MONEY = 0
+         ,@ICMS_Partilhado_Percentual MONEY = 0
+         ,@ICMS_Partilhado_Percentual_Interestadual MONEY = 0
+         ,@ICMS_Partilhado_Percentual_Partilha MONEY = 0
+         ,@ICMS_Partilhado_Valor_Destino MONEY = 0
+         ,@ICMS_Partilhado_Valor_Remetente MONEY = 0
+         ,@ICMS_Partilhado_Perc_Reducao MONEY = 0
+         ,@ICMS_FCP_Percentual MONEY = 0
+         ,@ICMS_FCP_Valor MONEY = 0
+         ,@Ordem_CEST INT = 0
+         ,@CEST VARCHAR(7) = ''
+         ,@Ordem_Motivo_Promocao INT = NULL
+         ,@Codigo_Motivo_Promocao VARCHAR(8) = NULL
+         ,@Ordem_Motivo_Desconto INT = NULL
+         ,@Codigo_Motivo_Desconto VARCHAR(8) = NULL
+         ,@IPI_Manualmente_Entrada BIT = NULL
+         ,@Impostos_Configurados BIT = NULL
+         ,@Valida_R05V2 VARCHAR(32) = NULL
+         ,@Ordem_Funcionario_Digitado_Por INT = NULL
+         ,@Codigo_Funcionario_Digitado_Por INT = NULL
+         ,@Nome_Funcionario_Digitado_Por VARCHAR(50) = NULL
+         ,@ICMS_Normal_Soma_IPI BIT = NULL
+         ,@ICMS_Normal_Soma_Frete BIT = NULL
+         ,@ICMS_Normal_Soma_Despesas BIT = NULL
+         ,@Ordem_Motivo_Devolucao INT = NULL
+         ,@Periodo_Desconto_Possui_Limite BIT = NULL
+         ,@Periodo_Desconto_Percentual MONEY = 0
+         ,@Utilizou_Comissao_Por_Filial BIT = NULL
+         ,@Comissao_Por_Filial BIT = NULL
+         ,@Periodo_Desconto_Data_Inicial DATE = NULL
+         ,@Periodo_Desconto_Data_Final DATE = NULL
+         ,@Custo_Adicional MONEY = NULL
+         ,@Percentual_Difal MONEY = NULL
+         ,@Codigo_ANP VARCHAR(9) = NULL
+         ,@Indicador_Escala_Relevancia VARCHAR(1) = NULL
+         ,@CNPJ_Fabricante VARCHAR(18) = NULL
+         ,@Codigo_Beneficio_Fiscal VARCHAR(10) = NULL
+         ,@Numero_Registro_Anvisa VARCHAR(13) = NULL
+         ,@Produto_GLP MONEY = 0
+         ,@Perc_GLP MONEY = 0
+         ,@Perc_GNN MONEY = 0
+         ,@Perc_GNI MONEY = 0
+         ,@Valor_Partida MONEY = 0
+         ,@FCP_Normal_Percentual MONEY = 0
+         ,@FCP_Normal_Base MONEY = 0
+         ,@FCP_Normal_Valor MONEY = 0
+         ,@FCP_ST_Percentual MONEY = 0
+         ,@FCP_ST_Base MONEY = 0
+         ,@FCP_ST_Valor MONEY = 0
+         ,@FCP_Retido_Percentual MONEY = 0
+         ,@FCP_Retido_Base MONEY = 0
+         ,@FCP_Retido_Valor MONEY = 0
+         ,@Utilizou_Codigo_Promocional BIT = 0
+         ,@Preco_Final_Relatorio MONEY = 0
+         ,@Desconto_Valor_Promocoes_Especiais MONEY = NULL
+         ,@Desconto_Percentual_Promocoes_Especiais MONEY = NULL
+         ,@Ordem_Grupo_CC_NF INT = 0
+         ,@Ordem_Grupo_CC_CF INT = 0
+         ,@Sem_GTIN BIT = 0
+         ,@Grade_Sem_GTIN BIT = 0
+         ,@Numero_Item_Pedido_V2 VARCHAR(6) = NULL
+         ,@EAN_Tributavel VARCHAR(14) = ''
+         ,@Grade_EAN_Tributavel VARCHAR(14) = ''
+         ,@ICMS_Reducao_Efetivo_Percentual MONEY = 0
+         ,@ICMS_Efetivo_Base MONEY = 0
+         ,@ICMS_Efetivo_Percentual MONEY = 0
+         ,@ICMS_Efetivo_Valor MONEY = 0
+         ,@Codigo_Digitado_Tela VARCHAR(25) = ''
+         ,@ICMSST_Repasse_Percentual MONEY = 0
+         ,@ICMSST_Repasse_Base MONEY = 0
+         ,@ICMSST_Repasse_Valor MONEY = 0
+         ,@ICMSST_Repasse_Calcular BIT = 0
+         ,@Retencao_Produto_IR_Base MONEY = 0
+         ,@Retencao_Produto_IR_Percentual MONEY = 0
+         ,@Retencao_Produto_IR_Valor_Minimo MONEY = 0
+         ,@Retencao_Produto_PIS_Percentual MONEY = 0
+         ,@Retencao_Produto_COFINS_Percentual MONEY = 0
+         ,@Retencao_Produto_CSLL_Percentual MONEY = 0
+         ,@Retencao_Produto_PIS_COFINS_CSLL_Valor_Minimo MONEY = 0
+         ,@Retencao_Produto_PIS_Base MONEY = 0
+         ,@Retencao_Produto_COFINS_Base MONEY = 0
+         ,@Retencao_Produto_CSLL_Base MONEY = 0
+         ,@Retencao_Produto_PIS_Valor MONEY = 0
+         ,@Retencao_Produto_COFINS_Valor MONEY = 0
+         ,@Retencao_Produto_CSLL_Valor MONEY = 0
+         ,@Retencao_Calcular BIT = 0
+         ,@Retencao_Produto_IR_Valor MONEY = 0
+         ,@Numero_Linha_Pai INT = 0
+         ,@Status_Remessa INT = 0
+         ,@CFOP_Prod_Serv_Composto BIT = 0
+         ,@Custo_Adicional_Valor MONEY = NULL
+         ,@Reservado_Loja BIT = 0
+         ,@Peso_Liquido MONEY = NULL
+         ,@Agrupador VARCHAR(30) = ''
+         ,@Devolucao_IPI_Soma_ICMS_Normal BIT = 0
+         ,@Devolucao_IPI_Soma_ICMS_ST BIT = 0
+         ,@Ordem_Filial_Estoque INT = 0
+         ,@Codigo_Filial_Estoque INT = 0
+         ,@Nome_Filial_Estoque VARCHAR(50) = ''
+         ,@Isento_Registro_ANVISA BIT = 0
+         ,@Motivo_Isencao_ANVISA VARCHAR(255) = ''
+         ,@Enviar_ICMSSubstituto BIT = 0
+         ,@ICMS_Normal_Percentual_Efetivo_SAT MONEY = 0
+         ,@Difal_Base_Modo_Calculo VARCHAR(1) = ''
+         ,@Pedido_Garantia BIT = 0
+         ,@Enviar_ICMSSubstituto_Zerado BIT = 0
+         ,@Devolucao_Simplificada_Nota_Vinculada VARCHAR(60) = ''
+         ,@Devolucao_Simplificada_Sequencia_Vinculada INT = 0
+         ,@Devolucao_Simplificada_Numero_Linha_Vinculado INT = 0
+         ,@Tipo_Retirada VARCHAR(1) = ''
+         ,@Altura_Digitada MONEY = 0
+         ,@Largura_Digitada MONEY = 0
+         ,@Permite_Lancar_Largura_Altura BIT = 0
+         ,@Produto_Em_Contagem BIT = 0
+         ,@Vendido_Por_Peso BIT = 0
+         ,@Bloqueado_Lancamento BIT = 0
+         ,@Bloqueado_Lancamento_Entrada BIT = 0
+         ,@Bloqueado_Lancamento_Saida BIT = 0
+         ,@Promocoes_Apagar_Compra BIT = 0
+         ,@Promocoes_Apagar_Saida BIT = 0
+         ,@Promocoes_Apagar_Saida_Tipo VARCHAR(1) = ''
+         ,@Tipo_Tributacao_Servico INT = 0
+         ,@JSON_Lista_Etapas_Calculos_Personalizados VARCHAR(MAX) = ''
+         ,@CRM_BONUS BIT = 0
+         ,@Permitir_Bloquear_Operacoes BIT = 0
+         ,@Discriminacao_Servico VARCHAR(255)= ''
+         ,@Identificador_Kit INT = 0
+         ,@ISS_Valor_Sem_Arredondar MONEY = 0
+         ,@PIS_COFINS_Natureza_Base_Credito VARCHAR(2) = ''
+         ,@ICMS_Monofasico_Normal_Base MONEY = 0
+         ,@ICMS_Monofasico_Normal_Aliquota_AdRem MONEY = 0
+         ,@ICMS_Monofasico_Normal_Valor MONEY = 0
+         ,@ICMS_Monofasico_Retencao_Base MONEY = 0
+         ,@ICMS_Monofasico_Retencao_Aliquota_AdRem MONEY = 0
+         ,@ICMS_Monofasico_Retencao_Valor MONEY = 0
+         ,@ICMS_Monofasico_Reducao_Aliquota_AdRem MONEY = 0
+         ,@ICMS_Monofasico_Reducao_Motivo VARCHAR(1) = ''
+         ,@ICMS_Monofasico_Diferido_Percentual_Diferimento MONEY = 0
+         ,@ICMS_Monofasico_Diferido_Valor MONEY = 0
+         ,@ICMS_Monofasico_Diferido_Valor_ICMS_Devido MONEY = 0
+         ,@ICMS_Monofasico_Retido_Base MONEY = 0
+         ,@ICMS_Monofasico_Retido_Aliquota_AdRem MONEY = 0
+         ,@ICMS_Monofasico_Retido_Valor MONEY = 0
+         ,@Conferencia_Qtde_Conferida MONEY = 0 
+         ,@Conferencia_Inserido_Posteriomente BIT = 0
+         ,@Produto_Sem_Conferencia_Saida BIT = 0
+         ,@Converteu_Em_CST_60_XML BIT = 0
+         ,@Devolucao_Simplificada_Ordem_Movimento_Prod_Serv_Considerar INT = 0
+         ,@Devolucao_Simplificada_Sequencia_Considerar INT = 0
+         ,@Devolucao_Simplificada_Numero_Linha_Considerar INT = 0
+         ,@Luxottica_Cliente_Deixou_Aro_Uso BIT = 0
+         ,@Perc_Biodiesel MONEY = 0
+         ,@Ordem_Classe INT = 0
+         ,@Ordem_Familia INT = 0
+         ,@ISS_Valor_Subtrair_Total MONEY = 0
+         ,@Apelido_Vendedor VARCHAR(15) = ''
+         ,@Apelido_Vendedor2 VARCHAR(15) = ''
+         ,@Apelido_Tecnico1 VARCHAR(15) = ''
+         ,@Apelido_Tecnico2 VARCHAR(15) = ''
+         ,@Ordem_ANP int = 0
+         ,@Nome_ANP VARCHAR(200) = ''
+ 		 ,@Exibir_Campo_Extra_Prod_Serv BIT = 0
+ 		 ,@Complemento_Extra VARCHAR(700) = ''
+ 		 ,@Preco_Custo_Mantido_Orcamento BIT = 0 
+ 		 ,@Valores_Antes_Converter_CTS60 varchar(2000) = NULL
+ 		 ,@ICMS_Normal_Codigo_Beneficio_Reducao VARCHAR(10)=''
+ 		 ,@Codigo_BFCP VARCHAR(10)=''
+ 		 ,@Perc_BFCP MONEY = 0
+ 		 ,@Valor_BFCP MONEY = 0
+ 		 ,@Retencao_Calcular_Produtos_Com_Desconto BIT = 0
+ 		 ,@Codigo_Localizacao INT = 0
+ 		 ,@Nome_Localizacao VARCHAR(25)=''
+         ,@INSS_Base MONEY = 0
+         ,@INSS_Valor MONEY = 0
+         ,@INSS_Percentual MONEY = 0
+ 		 ,@Enviar_BFCP BIT = 0
+ 		 ,@Base_BFCP MONEY = 0
+ 		 ,@Fracionar_Permitido BIT = 0
+ 		 ,@Promocoes_Apagar_Compra_Todas_Filiais BIT = 0
+ 		 ,@Margem_Flex_Valor MONEY = 0
+ 		 ,@Codigo_Prod_Serv_Importado_Xml varchar(20) = NULL
+ 		 ,@Data_Servico_Concluido DATETIME = NULL
+ 		 ,@Identificadores_Promocao_DS VARCHAR(MAX) = NULL
+ 		 ,@PIS_Subst_Soma_Total BIT = 0
+ 		 ,@COFINS_Subst_Soma_Total BIT = 0
+ 		 ,@Ordem_Unidade_Venda_Sobrescrever INT = 0
+ 		 ,@Codigo_Unidade_Venda_Sobrescrever INT = 0
+ 		 ,@Nome_Unidade_Venda_Sobrescrever VARCHAR(8) = ''
+         ,@ISS_Percentual_Deducao MONEY = 0
+         ,@Valor_Deducao_Configurado MONEY = 0
+     AS
+     BEGIN
+         SET NOCOUNT ON;
+          
+         INSERT INTO Movimento_Prod_Serv (
+              Ordem_Movimento
+             ,Ordem_Prod_Serv
+             ,Ordem_Tabela_Preco
+             ,Ordem_Vendedor
+             ,Ordem_Vendedor2
+             ,Ordem_Comissionado
+             ,Ordem_Tamanho
+             ,Ordem_Cor
+             ,Ordem_Edicao
+             ,Ordem_Lote
+             ,Ordem_CFOP_Prod_NF
+             ,Ordem_CFOP_Serv_NF
+             ,Ordem_CFOP_Prod_CF
+             ,Ordem_CFOP_Serv_CF
+             ,Numero_Linha
+             ,Quantidade_Itens
+             ,Quantidade_Caixas_Com
+             ,Quantidade
+             ,Preco_Unitario
+             ,Preco_Total_Sem_Desconto
+             ,Desconto_Percentual
+             ,Desconto_Valor
+             ,Acrescimo_Valor
+             ,Desconto_Percentual_Calculado
+             ,Preco_Total_Com_Desconto
+             ,Peso_Bruto
+             ,Cubagem
+             ,Preco_Final
+             ,Complemento
+             ,Frete_Valor
+             ,Despesas_Valor
+             ,IPI_Base
+             ,IPI_Percentual
+             ,IPI_Valor
+             ,IPI_CST
+             ,ICMS_Simples_Base
+             ,ICMS_Simples_Percentual
+             ,ICMS_Simples_Valor
+             ,ICMS_Normal_Base
+             ,ICMS_Normal_Percentual
+             ,ICMS_Normal_Valor
+             ,ICMS_Normal_Perc_Reducao
+             ,ICMS_Normal_Modalidade_Base
+             ,ICMS_Subst_Base
+             ,ICMS_Subst_Percentual
+             ,ICMS_Carga_Media_Percentual
+             ,ICMS_Subst_Percentual_MVA
+             ,ICMS_Subst_Perc_Reducao
+             ,ICMS_Subst_Valor
+             ,ICMS_Subst_Modalidade_Base
+             ,ICMS_Diferido_Valor_Operacao
+             ,ICMS_Diferido_Percentual
+             ,ICMS_Diferido_Valor_Diferimento
+             ,ICMS_Retido_Base
+             ,ICMS_Retido_Percentual
+             ,ICMS_Retido_Valor
+             ,ICMS_CST_CSOSN
+             ,Imp_Fiscal_Tipo
+             ,Imp_Fiscal_Percentual
+             ,Imp_Fiscal_Base
+             ,Imp_Fiscal_Valor
+             ,PIS_Normal_Base
+             ,PIS_Normal_Percentual
+             ,PIS_Normal_Valor
+             ,PIS_Subst_Base
+             ,PIS_Subst_Percentual
+             ,PIS_Subst_Valor
+             ,PIS_COFINS_CST
+             ,COFINS_Normal_Base
+             ,COFINS_Normal_Percentual
+             ,COFINS_Normal_Valor
+             ,COFINS_Subst_Base
+             ,COFINS_Subst_Percentual
+             ,COFINS_Subst_Valor
+             ,ISS_Base
+             ,ISS_Percentual
+             ,ISS_Valor
+             ,ISS_Indicador_Exigibilidade
+             ,ISS_Indicador_Incentivo_Fiscal
+             ,Base_II
+             ,Desp_Aduaneira_II
+             ,IOF_II
+             ,Valor_II
+             ,Valor_II_Soma_Total
+             ,Linha_Excluida
+             ,Servico_Concluido
+             ,Data_Alteracao
+             ,Ordem_Funcionario_Alteracao
+             ,Validacao
+             ,Etiqueta
+             ,Ordem_Classe_Imposto
+             ,Origem_Mercadoria
+             ,Ordem_NCM
+             ,Ordem_NBS
+             ,Ex_Tipi
+             ,Pedido
+             ,Numero_Item_Pedido
+             ,Carga_Tributaria
+             ,Carga_Tributaria_Percentual
+             ,Carga_Tributaria_Fonte
+             ,ICMS_Desonerado_Valor
+             ,Numero_RECOPI
+             ,NCM
+             ,NBS
+             ,CFOP_NF
+             ,CFOP_CF
+             ,COFINS_Calcula_Subs
+             ,PIS_Calcula_Subs
+             ,FCI
+             ,FCI_Perc_Importado
+             ,Medicamento
+             ,Ordem_Tabela_PMC
+             ,Preco_PMC
+             ,ICMS_Motivo_Desoneracao
+             ,Observacao
+             ,Percentual_Devolvido
+             ,IPI_Valor_Devolvido
+             ,Diferenca_Cupom
+             ,Comissao_Vendedor1
+             ,Comissao_Vendedor2
+             ,Comissao_Comissionado
+             ,Numero_Ordem_Servico
+             ,Cod_Classifica_Serv
+             ,Totalizador_Parcial
+             ,Valida_R05
+             ,Ordem_Tabela_Preco_Custo
+             ,Preco_Custo
+             ,Ordem_Tabela_Preco_Custo_Medio
+             ,Preco_Custo_Medio
+             ,Ordem_Tecnico1
+             ,Ordem_Tecnico2
+             ,Frete_Valor_Separado
+             ,ICMS_Retido_Modalidade_Base
+             ,ICMS_Diferido_Modalidade_Base
+             ,ICMS_Diferido_Base
+             ,ICMS_Diferido_Normal_Valor
+             ,ICMS_Diferido_Normal_Percentual
+             ,Utilizou_Preco_Promocional
+             ,ICMS_Normal_Base_Sem_Reducao
+             ,ICMS_Subst_Base_Sem_Reducao
+             ,Preco_Por_Caixa
+             ,Comissao_Tecnico1
+             ,Comissao_Tecnico2
+             ,Estoque_Efetivado_OS
+             ,Carga_Tributaria_Federal_Perc
+             ,Carga_Tributaria_Federal_Valor
+             ,Carga_Tributaria_Estadual_Perc
+             ,Carga_Tributaria_Estadual_Valor
+             ,Carga_Tributaria_Municipal_Perc
+             ,Carga_Tributaria_Municipal_Valor
+             ,Carga_Tributaria_Chave
+             ,Carga_Tributaria_Fonte2
+             ,Preco_Unitario_Original
+             ,Excluido_Pelo_Shop
+             ,Natureza_Operacao_ISSQN
+             ,Codigo_Tributacao_ISS
+             ,ICMS_Norm_Omitir_Opcionais_51
+             ,ICMS_Normal_Subtrair_Valor_Desonerado_Total_Nota
+             ,ICMS_Normal_Percentual_Desoneracao
+             ,Ordem_Enquadramento_IPI
+             ,Codigo_Enquadramento_IPI
+             ,ICMS_Partilhado_Base
+             ,ICMS_Partilhado_Percentual
+             ,ICMS_Partilhado_Percentual_Interestadual
+             ,ICMS_Partilhado_Percentual_Partilha
+             ,ICMS_Partilhado_Valor_Destino
+             ,ICMS_Partilhado_Valor_Remetente
+             ,ICMS_Partilhado_Perc_Reducao
+             ,ICMS_FCP_Percentual
+             ,ICMS_FCP_Valor
+             ,Ordem_CEST
+             ,CEST
+             ,Ordem_Motivo_Promocao
+             ,Codigo_Motivo_Promocao
+             ,Ordem_Motivo_Desconto
+             ,Codigo_Motivo_Desconto
+             ,IPI_Manualmente_Entrada
+             ,Impostos_Configurados
+             ,Valida_R05V2
+             ,Ordem_Funcionario_Digitado_Por
+             ,ICMS_Normal_Soma_IPI
+             ,ICMS_Normal_Soma_Frete
+             ,ICMS_Normal_Soma_Despesas
+             ,Ordem_Motivo_Devolucao
+             ,Periodo_Desconto_Possui_Limite
+             ,Periodo_Desconto_Percentual
+             ,Utilizou_Comissao_Por_Filial
+             ,Periodo_Desconto_Data_Inicial
+             ,Periodo_Desconto_Data_Final
+             ,Custo_Adicional
+             ,Percentual_Difal
+             ,FCP_Normal_Percentual
+             ,FCP_Normal_Base
+             ,FCP_Normal_Valor
+             ,FCP_ST_Percentual
+             ,FCP_ST_Base
+             ,FCP_ST_Valor
+             ,FCP_Retido_Percentual
+             ,FCP_Retido_Base
+             ,FCP_Retido_Valor
+             ,Utilizou_Codigo_Promocional
+             ,Codigo_Beneficio_Fiscal
+             ,Desconto_Valor_Promocoes_Especiais
+             ,Desconto_Percentual_Promocoes_Especiais
+             ,Ordem_Grupo_CC_NF
+             ,Ordem_Grupo_CC_CF
+             ,Numero_Item_Pedido_V2
+             ,ICMS_Reducao_Efetivo_Percentual
+             ,ICMS_Efetivo_Base
+             ,ICMS_Efetivo_Percentual
+             ,ICMS_Efetivo_Valor
+             ,Codigo_Digitado_Tela
+             ,ICMSST_Repasse_Percentual
+             ,ICMSST_Repasse_Base
+             ,ICMSST_Repasse_Valor
+             ,ICMSST_Repasse_Calcular
+             ,Retencao_Produto_IR_Base
+             ,Retencao_Produto_IR_Percentual
+             ,Retencao_Produto_IR_Valor_Minimo
+             ,Retencao_Produto_PIS_Percentual
+             ,Retencao_Produto_COFINS_Percentual
+             ,Retencao_Produto_CSLL_Percentual
+             ,Retencao_Produto_PIS_COFINS_CSLL_Valor_Minimo
+             ,Retencao_Produto_PIS_Base
+             ,Retencao_Produto_COFINS_Base
+             ,Retencao_Produto_CSLL_Base
+             ,Retencao_Produto_PIS_Valor
+             ,Retencao_Produto_COFINS_Valor
+             ,Retencao_Produto_CSLL_Valor
+             ,Retencao_Calcular
+             ,Retencao_Produto_IR_Valor
+             ,Numero_Linha_Pai
+             ,Status_Remessa
+             ,CFOP_Prod_Serv_Composto
+             ,Custo_Adicional_Valor
+             ,Reservado_Loja
+             ,Peso_Liquido
+             ,Agrupador
+             ,Devolucao_IPI_Soma_ICMS_Normal
+             ,Devolucao_IPI_Soma_ICMS_ST
+             ,Ordem_Filial_Estoque
+             ,Enviar_ICMSSubstituto
+             ,ICMS_Normal_Percentual_Efetivo_SAT
+             ,Difal_Base_Modo_Calculo
+             ,Pedido_Garantia
+             ,Enviar_ICMSSubstituto_Zerado
+             ,Devolucao_Simplificada_Nota_Vinculada
+             ,Devolucao_Simplificada_Sequencia_Vinculada
+             ,Devolucao_Simplificada_Numero_Linha_Vinculado
+             ,Tipo_Retirada
+             ,Altura_Digitada
+             ,Largura_Digitada
+             ,Tipo_Tributacao_Servico
+             ,JSON_Lista_Etapas_Calculos_Personalizados
+             ,CRM_BONUS
+             ,Discriminacao_Servico
+             ,Identificador_Kit
+             ,ISS_Valor_Sem_Arredondar
+             ,PIS_COFINS_Natureza_Base_Credito
+             ,ICMS_Monofasico_Normal_Base
+             ,ICMS_Monofasico_Normal_Aliquota_AdRem 
+             ,ICMS_Monofasico_Normal_Valor 
+             ,ICMS_Monofasico_Retencao_Base
+             ,ICMS_Monofasico_Retencao_Aliquota_AdRem 
+             ,ICMS_Monofasico_Retencao_Valor 
+             ,ICMS_Monofasico_Reducao_Aliquota_AdRem 
+             ,ICMS_Monofasico_Reducao_Motivo 
+             ,ICMS_Monofasico_Diferido_Percentual_Diferimento 
+             ,ICMS_Monofasico_Diferido_Valor 
+             ,ICMS_Monofasico_Diferido_Valor_ICMS_Devido 
+             ,ICMS_Monofasico_Retido_Base 
+             ,ICMS_Monofasico_Retido_Aliquota_AdRem 
+             ,ICMS_Monofasico_Retido_Valor
+             ,Conferencia_Qtde_Conferida
+             ,Conferencia_Inserido_Posteriomente
+             ,Converteu_Em_CST_60_XML
+             ,Devolucao_Simplificada_Ordem_Movimento_Prod_Serv_Considerar
+             ,Devolucao_Simplificada_Sequencia_Considerar
+             ,Devolucao_Simplificada_Numero_Linha_Considerar
+             ,Luxottica_Cliente_Deixou_Aro_Uso
+             ,ISS_Valor_Subtrair_Total
+ 			 ,Complemento_Extra
+ 			 ,Preco_Custo_Mantido_Orcamento
+        	 ,Valores_Antes_Converter_CTS60
+        	 ,ICMS_Normal_Codigo_Beneficio_Reducao
+        	 ,Codigo_BFCP
+        	 ,Perc_BFCP
+        	 ,Valor_BFCP
+        	 ,Retencao_Calcular_Produtos_Com_Desconto
+        	 ,INSS_Base
+        	 ,INSS_Valor
+        	 ,INSS_Percentual
+      		 ,Enviar_BFCP
+      		 ,Base_BFCP
+    		 ,Margem_Flex_Valor
+  			 ,Codigo_Prod_Serv_Importado_Xml
+  			 ,Data_Servico_Concluido
+  			 ,Identificadores_Promocao_DS
+  			 ,PIS_Subst_Soma_Total
+  			 ,COFINS_Subst_Soma_Total
+ 			 ,Ordem_Unidade_Venda_Sobrescrever
+  			 ,ISS_Percentual_Deducao
+ 			 ,Valor_Deducao_Configurado)
+         VALUES (
+              @Ordem_Movimento
+             ,@Ordem_Prod_Serv
+             ,@Ordem_Tabela_Preco
+             ,@Ordem_Vendedor
+             ,@Ordem_Vendedor2
+             ,@Ordem_Comissionado
+             ,@Ordem_Tamanho
+             ,@Ordem_Cor
+             ,@Ordem_Edicao
+             ,@Ordem_Lote
+             ,@Ordem_CFOP_Prod_NF
+             ,@Ordem_CFOP_Serv_NF
+             ,@Ordem_CFOP_Prod_CF
+             ,@Ordem_CFOP_Serv_CF
+             ,@Numero_Linha
+             ,@Quantidade_Itens
+             ,@Quantidade_Caixas_Com
+             ,@Quantidade
+             ,@Preco_Unitario
+             ,@Preco_Total_Sem_Desconto
+             ,@Desconto_Percentual
+             ,@Desconto_Valor
+             ,@Acrescimo_Valor
+             ,@Desconto_Percentual_Calculado
+             ,@Preco_Total_Com_Desconto
+             ,@Peso_Bruto
+             ,@Cubagem
+             ,@Preco_Final
+             ,@Complemento
+             ,@Frete_Valor
+             ,@Despesas_Valor
+             ,@IPI_Base
+             ,@IPI_Percentual
+             ,@IPI_Valor
+             ,@IPI_CST
+             ,@ICMS_Simples_Base
+             ,@ICMS_Simples_Percentual
+             ,@ICMS_Simples_Valor
+             ,@ICMS_Normal_Base
+             ,@ICMS_Normal_Percentual
+             ,@ICMS_Normal_Valor
+             ,@ICMS_Normal_Perc_Reducao
+             ,@ICMS_Normal_Modalidade_Base
+             ,@ICMS_Subst_Base
+             ,@ICMS_Subst_Percentual
+             ,@ICMS_Carga_Media_Percentual
+             ,@ICMS_Subst_Percentual_MVA
+             ,@ICMS_Subst_Perc_Reducao
+             ,@ICMS_Subst_Valor
+             ,@ICMS_Subst_Modalidade_Base
+             ,@ICMS_Diferido_Valor_Operacao
+             ,@ICMS_Diferido_Percentual
+             ,@ICMS_Diferido_Valor_Diferimento
+             ,@ICMS_Retido_Base
+             ,@ICMS_Retido_Percentual
+             ,@ICMS_Retido_Valor
+             ,@ICMS_CST_CSOSN
+             ,@Imp_Fiscal_Tipo
+             ,@Imp_Fiscal_Percentual
+             ,@Imp_Fiscal_Base
+             ,@Imp_Fiscal_Valor
+             ,@PIS_Normal_Base
+             ,@PIS_Normal_Percentual
+             ,@PIS_Normal_Valor
+             ,@PIS_Subst_Base
+             ,@PIS_Subst_Percentual
+             ,@PIS_Subst_Valor
+             ,@PIS_COFINS_CST
+             ,@COFINS_Normal_Base
+             ,@COFINS_Normal_Percentual
+             ,@COFINS_Normal_Valor
+             ,@COFINS_Subst_Base
+             ,@COFINS_Subst_Percentual
+             ,@COFINS_Subst_Valor
+             ,@ISS_Base
+             ,@ISS_Percentual
+             ,@ISS_Valor
+             ,@ISS_Indicador_Exigibilidade
+             ,@ISS_Indicador_Incentivo_Fiscal
+             ,@Base_II
+             ,@Desp_Aduaneira_II
+             ,@IOF_II
+             ,@Valor_II
+             ,@Valor_II_Soma_Total
+             ,@Linha_Excluida
+             ,@Servico_Concluido
+             ,GETDATE()
+             ,@Ordem_Funcionario_Alteracao
+             ,@Validacao
+             ,@Etiqueta
+             ,@Ordem_Classe_Imposto
+             ,@Origem_Mercadoria
+             ,@Ordem_NCM
+             ,@Ordem_NBS
+             ,@Ex_Tipi
+             ,@Pedido
+             ,@Numero_Item_Pedido
+             ,@Carga_Tributaria
+             ,@Carga_Tributaria_Percentual
+             ,@Carga_Tributaria_Fonte
+             ,@ICMS_Desonerado_Valor
+             ,@Numero_RECOPI
+             ,@NCM
+             ,@NBS
+             ,@CFOP_NF
+             ,@CFOP_CF
+             ,@COFINS_Calcula_Subs
+             ,@PIS_Calcula_Subs
+             ,@FCI
+             ,@FCI_Perc_Importado
+             ,@Medicamento
+             ,@Ordem_Tabela_PMC
+             ,@Preco_PMC
+             ,@ICMS_Motivo_Desoneracao
+             ,@Observacao
+             ,@Percentual_Devolvido
+             ,@IPI_Valor_Devolvido
+             ,@Diferenca_Cupom
+             ,@Comissao_Vendedor1
+             ,@Comissao_Vendedor2
+             ,@Comissao_Comissionado
+             ,@Numero_Ordem_Servico
+             ,@Cod_classifica_Serv
+             ,@Totalizador_Parcial
+             ,@Valida_R05
+             ,@Ordem_Tabela_Preco_Custo
+             ,@Preco_Custo
+             ,@Ordem_Tabela_Preco_Custo_Medio
+             ,@Preco_Custo_Medio
+             ,@Ordem_Tecnico1
+             ,@Ordem_Tecnico2
+             ,@Frete_Valor_Separado
+             ,@ICMS_Retido_Modalidade_Base
+             ,@ICMS_Diferido_Modalidade_Base
+             ,@ICMS_Diferido_Base
+             ,@ICMS_Diferido_Normal_Valor
+             ,@ICMS_Diferido_Normal_Percentual
+             ,@Utilizou_Preco_Promocional
+             ,@ICMS_Normal_Base_Sem_Reducao
+             ,@ICMS_Subst_Base_Sem_Reducao
+             ,@Preco_Por_Caixa
+             ,@Comissao_Tecnico1
+             ,@Comissao_Tecnico2
+             ,@Estoque_Efetivado_OS
+             ,@Carga_Tributaria_Federal_Perc
+             ,@Carga_Tributaria_Federal_Valor
+             ,@Carga_Tributaria_Estadual_Perc
+             ,@Carga_Tributaria_Estadual_Valor
+             ,@Carga_Tributaria_Municipal_Perc
+             ,@Carga_Tributaria_Municipal_Valor
+             ,@Carga_Tributaria_Chave
+             ,@Carga_Tributaria_Fonte2
+             ,@Preco_Unitario_Original
+             ,@Excluido_Pelo_Shop
+             ,@Natureza_Operacao_ISSQN
+             ,@Codigo_Tributacao_ISS
+             ,@ICMS_Norm_Omitir_Opcionais_51
+             ,@ICMS_Normal_Subtrair_Valor_Desonerado_Total_Nota
+             ,@ICMS_Normal_Percentual_Desoneracao
+             ,@Ordem_Enquadramento_IPI
+             ,@Codigo_Enquadramento_IPI
+             ,@ICMS_Partilhado_Base
+             ,@ICMS_Partilhado_Percentual
+             ,@ICMS_Partilhado_Percentual_Interestadual
+             ,@ICMS_Partilhado_Percentual_Partilha
+             ,@ICMS_Partilhado_Valor_Destino
+             ,@ICMS_Partilhado_Valor_Remetente
+             ,@ICMS_Partilhado_Perc_Reducao
+             ,@ICMS_FCP_Percentual
+             ,@ICMS_FCP_Valor
+             ,@Ordem_CEST
+             ,@CEST
+             ,@Ordem_Motivo_Promocao
+             ,@Codigo_Motivo_Promocao
+             ,@Ordem_Motivo_Desconto
+             ,@Codigo_Motivo_Desconto
+             ,@IPI_Manualmente_Entrada
+             ,@Impostos_Configurados
+             ,@Valida_R05V2
+             ,@Ordem_Funcionario_Digitado_Por
+             ,@ICMS_Normal_Soma_IPI
+             ,@ICMS_Normal_Soma_Frete
+             ,@ICMS_Normal_Soma_Despesas
+             ,@Ordem_Motivo_Devolucao
+             ,@Periodo_Desconto_Possui_Limite
+             ,@Periodo_Desconto_Percentual
+             ,@Utilizou_Comissao_Por_Filial
+             ,@Periodo_Desconto_Data_Inicial
+             ,@Periodo_Desconto_Data_Final
+             ,@Custo_Adicional
+             ,@Percentual_Difal
+             ,@FCP_Normal_Percentual
+             ,@FCP_Normal_Base
+             ,@FCP_Normal_Valor
+             ,@FCP_ST_Percentual
+             ,@FCP_ST_Base
+             ,@FCP_ST_Valor
+             ,@FCP_Retido_Percentual
+             ,@FCP_Retido_Base
+             ,@FCP_Retido_Valor
+             ,@Utilizou_Codigo_Promocional
+             ,@Codigo_Beneficio_Fiscal
+             ,@Desconto_Valor_Promocoes_Especiais
+             ,@Desconto_Percentual_Promocoes_Especiais
+             ,@Ordem_Grupo_CC_NF
+             ,@Ordem_Grupo_CC_CF
+             ,@Numero_Item_Pedido_V2
+             ,@ICMS_Reducao_Efetivo_Percentual 
+             ,@ICMS_Efetivo_Base
+             ,@ICMS_Efetivo_Percentual
+             ,@ICMS_Efetivo_Valor
+             ,@Codigo_Digitado_Tela
+             ,@ICMSST_Repasse_Percentual
+             ,@ICMSST_Repasse_Base
+             ,@ICMSST_Repasse_Valor
+             ,@ICMSST_Repasse_Calcular
+             ,@Retencao_Produto_IR_Base
+             ,@Retencao_Produto_IR_Percentual
+             ,@Retencao_Produto_IR_Valor_Minimo
+             ,@Retencao_Produto_PIS_Percentual
+             ,@Retencao_Produto_COFINS_Percentual
+             ,@Retencao_Produto_CSLL_Percentual
+             ,@Retencao_Produto_PIS_COFINS_CSLL_Valor_Minimo
+             ,@Retencao_Produto_PIS_Base
+             ,@Retencao_Produto_COFINS_Base
+             ,@Retencao_Produto_CSLL_Base
+             ,@Retencao_Produto_PIS_Valor
+             ,@Retencao_Produto_COFINS_Valor
+             ,@Retencao_Produto_CSLL_Valor
+             ,@Retencao_Calcular
+             ,@Retencao_Produto_IR_Valor
+             ,@Numero_Linha_Pai
+             ,@Status_Remessa
+             ,@CFOP_Prod_Serv_Composto
+             ,@Custo_Adicional_Valor
+             ,@Reservado_Loja
+             ,@Peso_Liquido
+             ,@Agrupador
+             ,@Devolucao_IPI_Soma_ICMS_Normal
+             ,@Devolucao_IPI_Soma_ICMS_ST
+             ,@Ordem_Filial_Estoque
+             ,@Enviar_ICMSSubstituto
+             ,@ICMS_Normal_Percentual_Efetivo_SAT
+             ,@Difal_Base_Modo_Calculo
+             ,@Pedido_Garantia
+             ,@Enviar_ICMSSubstituto_Zerado
+             ,@Devolucao_Simplificada_Nota_Vinculada
+             ,@Devolucao_Simplificada_Sequencia_Vinculada
+             ,@Devolucao_Simplificada_Numero_Linha_Vinculado
+             ,@Tipo_Retirada
+             ,@Altura_Digitada
+             ,@Largura_Digitada
+             ,@Tipo_Tributacao_Servico
+             ,@JSON_Lista_Etapas_Calculos_Personalizados
+             ,@CRM_BONUS
+             ,@Discriminacao_Servico
+             ,@Identificador_Kit
+             ,@ISS_Valor_Sem_Arredondar
+             ,@PIS_COFINS_Natureza_Base_Credito
+             ,@ICMS_Monofasico_Normal_Base
+             ,@ICMS_Monofasico_Normal_Aliquota_AdRem 
+             ,@ICMS_Monofasico_Normal_Valor 
+             ,@ICMS_Monofasico_Retencao_Base
+             ,@ICMS_Monofasico_Retencao_Aliquota_AdRem 
+             ,@ICMS_Monofasico_Retencao_Valor 
+             ,@ICMS_Monofasico_Reducao_Aliquota_AdRem 
+             ,@ICMS_Monofasico_Reducao_Motivo 
+             ,@ICMS_Monofasico_Diferido_Percentual_Diferimento 
+             ,@ICMS_Monofasico_Diferido_Valor 
+             ,@ICMS_Monofasico_Diferido_Valor_ICMS_Devido 
+             ,@ICMS_Monofasico_Retido_Base 
+             ,@ICMS_Monofasico_Retido_Aliquota_AdRem 
+             ,@ICMS_Monofasico_Retido_Valor  
+             ,@Conferencia_Qtde_Conferida
+             ,@Conferencia_Inserido_Posteriomente
+             ,@Converteu_Em_CST_60_XML
+             ,@Devolucao_Simplificada_Ordem_Movimento_Prod_Serv_Considerar
+             ,@Devolucao_Simplificada_Sequencia_Considerar
+             ,@Devolucao_Simplificada_Numero_Linha_Considerar
+             ,@Luxottica_Cliente_Deixou_Aro_Uso
+             ,@ISS_Valor_Subtrair_Total
+ 			 ,@Complemento_Extra
+ 			 ,@Preco_Custo_Mantido_Orcamento
+        	 ,@Valores_Antes_Converter_CTS60
+        	 ,@ICMS_Normal_Codigo_Beneficio_Reducao
+        	 ,@Codigo_BFCP
+        	 ,@Perc_BFCP
+        	 ,@Valor_BFCP
+        	 ,@Retencao_Calcular_Produtos_Com_Desconto
+        	 ,@INSS_Base
+        	 ,@INSS_Valor
+        	 ,@INSS_Percentual
+      		 ,@Enviar_BFCP
+      		 ,@Base_BFCP
+    		 ,@Margem_Flex_Valor
+  			 ,@Codigo_Prod_Serv_Importado_Xml
+  			 ,@Data_Servico_Concluido
+  			 ,@Identificadores_Promocao_DS
+  			 ,@PIS_Subst_Soma_Total
+  			 ,@COFINS_Subst_Soma_Total
+ 			 ,@Ordem_Unidade_Venda_Sobrescrever
+ 			 ,@ISS_Percentual_Deducao
+ 			 ,@Valor_Deducao_Configurado)
+         
+ 		DECLARE @ID INTEGER
+         SET @ID = (
+             SELECT SCOPE_IDENTITY() ID
+             )
+         IF (NOT @Quantidade_Entregue_Pedido_Venda IS NULL)
+         BEGIN
+             INSERT INTO Movimento_Prod_Serv_Pedido_Venda_Entrega
+             VALUES (
+             @ID
+             ,@Quantidade_Entregue_Pedido_Venda
+             )
+             UPDATE Estoque_Atual
+             SET Pedidos_Venda = Pedidos_Venda - @Quantidade_Entregue_Pedido_Venda
+             WHERE Ordem_Prod_Serv = @Ordem_Prod_Serv
+             AND Ordem_Cor = @Ordem_Cor
+             AND Ordem_Tamanho = @Ordem_Tamanho
+             AND Ordem_Edicao = @Ordem_Edicao
+         END
+         SELECT @ID AS ID
+     END
+ 
