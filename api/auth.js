@@ -8,7 +8,6 @@ const ALLOWED_USERS = {
   'Aurelio': { password: '9016', branch: '9016' },
   'Joathan': { password: '9017', branch: '9017' },
   'Maicon': { password: '9018', branch: '9018' },
-  'Daniel': { password: '9019', branch: '9019' },
   'Wagner': { password: '9020', branch: '9020' },
   'Talita': { password: '9021', branch: '9021' },
   'Fabiana': { password: '9022', branch: '9022' },
