@@ -395,10 +395,11 @@ function fillBranchHistoryTable(rows) {
         const vpnUser = item.vpnUsername || item.credential || '';
         const vpnPass = item.vpnPassword != null ? String(item.vpnPassword) : '';
         const sysUser = item.systemUser || item.userName || '';
+        const computer = item.computerName || '—';
         const ts = item.timestamp
             ? new Date(item.timestamp).toLocaleString('pt-BR')
             : '—';
-        [vpnUser, vpnPass || '—', sysUser, ts].forEach(text => {
+        [vpnUser, vpnPass || '—', sysUser, computer, ts].forEach(text => {
             const td = document.createElement('td');
             td.textContent = text;
             tr.appendChild(td);
@@ -595,13 +596,14 @@ function handleExportClick() {
 function exportToExcel() {
     const wb = XLSX.utils.book_new();
 
-    const usedData = [['Usuário VPN', 'Senha VPN', 'Usuário do Sistema', 'Filial', 'Data/Hora de Uso']];
+    const usedData = [['Usuário VPN', 'Senha VPN', 'Usuário do Sistema', 'Filial', 'Computador', 'Data/Hora de Uso']];
     usedCredentials.forEach(item => {
         usedData.push([
             item.vpnUsername || item.credential || '',
             item.vpnPassword || '',
             item.systemUser || item.userName || '',
             item.branchNumber || '',
+            item.computerName || '',
             item.timestamp || ''
         ]);
     });
