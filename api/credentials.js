@@ -245,12 +245,13 @@ export default async function handler(req, res) {
       if (action === 'clear-available') {
         try {
           await writeBlobData(CREDENTIALS_FILE, []);
+          await writeBlobData(USED_CREDENTIALS_FILE, []);
           return res.status(200).json({
             success: true,
-            message: 'Todas as credenciais disponíveis foram removidas.'
+            message: 'Todas as credenciais disponíveis e utilizadas foram removidas.'
           });
         } catch (writeError) {
-          console.error('Erro ao limpar credenciais disponíveis:', writeError);
+          console.error('Erro ao limpar credenciais:', writeError);
           return res.status(500).json({
             message: 'Erro ao limpar credenciais no servidor',
             error: writeError.message

@@ -154,6 +154,7 @@ function handleClearAvailable() {
         return;
     }
     document.getElementById('clearAvailableCount').textContent = availableCredentials.length;
+    document.getElementById('clearUsedCount').textContent = usedCredentials.length;
     const modal = document.getElementById('clearAvailableModal');
     modal.classList.remove('hidden');
     modal.setAttribute('aria-hidden', 'false');
@@ -178,7 +179,7 @@ async function executeClearAvailable() {
 
         if (response.ok && data.success) {
             await loadDataFromAPI();
-            showStatus('uploadStatus', 'Todas as credenciais disponíveis foram removidas com sucesso!', 'success');
+            showStatus('uploadStatus', 'Todas as credenciais disponíveis e utilizadas foram removidas com sucesso!', 'success');
         } else {
             showStatus('uploadStatus', data.message || 'Erro ao zerar credenciais', 'error');
         }
