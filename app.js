@@ -279,12 +279,82 @@ function parseCsvContent(text) {
     return extractCredentials(rows);
 }
 
-// Lê planilha Excel (qualquer aba, qualquer número de colunas extras)
-function parseExcelBuffer(buffer) {
+// Nomes (normalizados) das abas do relatório de credenciais
+const AVAILABLE_SHEET_NAMES = new Set(['credenciais nao utilizadas']);
+const USED_SHEET_NAMES = new Set(['credenciais utilizadas', 'credenciais utilizada']);
+
+// Palavras que identificam colunas extras da aba "Credenciais Utilizadas"
+const SYSTEM_USER_COL_WORDS = new Set(['usuario do sistema', 'usuario sistema', 'systemuser', 'system user']);
+const BRANCH_COL_WORDS = new Set(['filial', 'branch', 'branchnumber', 'numero da filial']);
+const COMPUTER_COL_WORDS = new Set(['computador', 'computer', 'computername', 'maquina']);
+const TIMESTAMP_COL_WORDS = new Set(['data/hora de uso', 'data hora de uso', 'timestamp', 'data de uso', 'data/hora', 'datahora']);
+
+function findSheetByName(workbook, candidateNames) {
+    const match = workbook.SheetNames.find(name => candidateNames.has(normCell(name)));
+    return match ? workbook.Sheets[match] : null;
+}
+
+// Extrai credenciais utilizadas (com colunas extras: usuário do sistema, filial, computador, data/hora)
+function extractUsedCredentials(rows) {
+    let headerRow = -1;
+    for (let i = 0; i < Math.min(10, rows.length); i++) {
+        if (rowIsHeader(rows[i])) { headerRow = i; break; }
+    }
+
+    let userCol = 0, passCol = 1, sysCol = -1, branchCol = -1, computerCol = -1, timeCol = -1;
+    let startRow = 0;
+
+    if (headerRow !== -1) {
+        const headerCells = rows[headerRow];
+        const normalized = headerCells.map(normCell);
+        const cols = resolveColumns(headerCells);
+        userCol = cols.userCol;
+        passCol = cols.passCol;
+        sysCol = normalized.findIndex(c => SYSTEM_USER_COL_WORDS.has(c));
+        branchCol = normalized.findIndex(c => BRANCH_COL_WORDS.has(c));
+        computerCol = normalized.findIndex(c => COMPUTER_COL_WORDS.has(c));
+        timeCol = normalized.findIndex(c => TIMESTAMP_COL_WORDS.has(c));
+        startRow = headerRow + 1;
+    }
+
+    const used = [];
+    for (let i = startRow; i < rows.length; i++) {
+        const row = rows[i];
+        const username = String(row[userCol] ?? '').trim();
+        if (!username) continue;
+        if (ALL_HEADER_WORDS.has(normCell(username))) continue;
+
+        used.push({
+            vpnUsername: username,
+            vpnPassword: String(row[passCol] ?? '').trim(),
+            systemUser: sysCol !== -1 ? String(row[sysCol] ?? '').trim() : '',
+            branchNumber: branchCol !== -1 ? String(row[branchCol] ?? '').trim() : '',
+            computerName: computerCol !== -1 ? String(row[computerCol] ?? '').trim() : '',
+            timestamp: timeCol !== -1 ? String(row[timeCol] ?? '').trim() : ''
+        });
+    }
+    return used;
+}
+
+// Lê planilha Excel. Sempre usa a aba "Credenciais Não Utilizadas" para as credenciais
+// a serem enviadas (disponíveis). A aba "Credenciais Utilizadas" (quando presente) é lida
+// à parte e usada apenas para alimentar o histórico/gráficos de uso.
+function parseExcelWorkbook(buffer) {
     const workbook = XLSX.read(new Uint8Array(buffer), { type: 'array' });
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-    return extractCredentials(rows);
+
+    const availableSheet = findSheetByName(workbook, AVAILABLE_SHEET_NAMES)
+        // Compatibilidade: arquivo simples de uma aba só (sem o relatório de duas abas)
+        || (workbook.SheetNames.length === 1 ? workbook.Sheets[workbook.SheetNames[0]] : null);
+    const usedSheet = findSheetByName(workbook, USED_SHEET_NAMES);
+
+    const available = availableSheet
+        ? extractCredentials(XLSX.utils.sheet_to_json(availableSheet, { header: 1, defval: '' }))
+        : [];
+    const used = usedSheet
+        ? extractUsedCredentials(XLSX.utils.sheet_to_json(usedSheet, { header: 1, defval: '' }))
+        : [];
+
+    return { available, used };
 }
 
 function readFileAs(file, mode) {
@@ -323,20 +393,23 @@ async function handleUpload() {
     }
 
     try {
-        let credentials;
+        let credentials = [];
+        let usedFromFile = [];
         if (isExcel) {
             if (typeof XLSX === 'undefined') {
                 showStatus('uploadStatus', 'Biblioteca XLSX não carregada. Recarregue a página.', 'error');
                 return;
             }
-            credentials = parseExcelBuffer(await readFileAs(file, 'buffer'));
+            const parsed = parseExcelWorkbook(await readFileAs(file, 'buffer'));
+            credentials = parsed.available;
+            usedFromFile = parsed.used;
         } else if (isCsv) {
             credentials = parseCsvContent(await readFileAs(file, 'text'));
         } else {
             credentials = parseTxtContent(await readFileAs(file, 'text'));
         }
 
-        if (credentials.length === 0) {
+        if (credentials.length === 0 && usedFromFile.length === 0) {
             showStatus('uploadStatus', 'Nenhuma credencial encontrada no arquivo. Verifique se há colunas de usuário e senha.', 'error');
             return;
         }
@@ -344,7 +417,7 @@ async function handleUpload() {
         const response = await fetch(`${API_BASE}/api/credentials`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'upload', credentials })
+            body: JSON.stringify({ action: 'upload', credentials, usedCredentials: usedFromFile })
         });
 
         let data;
@@ -363,9 +436,12 @@ async function handleUpload() {
             if (data.skippedAlreadyAvailable > 0)  parts.push(`${data.skippedAlreadyAvailable} já disponível(is)`);
             if (data.skippedAlreadyUsed > 0)        parts.push(`${data.skippedAlreadyUsed} já utilizada(s)`);
             if (data.skippedDuplicateInFile > 0)    parts.push(`${data.skippedDuplicateInFile} duplicada(s) no arquivo`);
+            if (data.importedUsed > 0)              parts.push(`${data.importedUsed} de uso importada(s) para o histórico/gráficos`);
+            if (data.skippedUsedDuplicate > 0)      parts.push(`${data.skippedUsedDuplicate} de uso já existente(s)`);
 
-            showStatus('uploadStatus', parts.join(' | '), data.added > 0 ? 'success' : 'error', 8000);
-            if (data.added > 0) fileInput.value = '';
+            const hasChange = data.added > 0 || data.importedUsed > 0;
+            showStatus('uploadStatus', parts.join(' | '), hasChange ? 'success' : 'error', 8000);
+            if (hasChange) fileInput.value = '';
         } else {
             let errorMsg = data.message || data.error || 'Erro ao fazer upload';
             if (data.error && data.error.includes('BLOB_READ_WRITE_TOKEN')) {

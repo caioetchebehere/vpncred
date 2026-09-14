@@ -117,15 +117,17 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const { action, credentials, userName, branchNumber, computerName } = req.body;
+      const { action, credentials, usedCredentials, userName, branchNumber, computerName } = req.body;
 
       if (action === 'upload') {
         // Upload de credenciais (admin only - validação deve ser feita no frontend também)
-        if (!credentials || !Array.isArray(credentials)) {
-          return res.status(400).json({ message: 'Credenciais inválidas' });
-        }
+        // `credentials` = credenciais disponíveis (aba "Credenciais Não Utilizadas").
+        // `usedCredentials` = histórico de uso (aba "Credenciais Utilizadas"), usado apenas
+        // para alimentar gráficos/estatísticas — nunca entra no pool de disponíveis.
+        const safeCredentials = Array.isArray(credentials) ? credentials : [];
+        const safeUsedInput = Array.isArray(usedCredentials) ? usedCredentials : [];
 
-        if (credentials.length === 0) {
+        if (safeCredentials.length === 0 && safeUsedInput.length === 0) {
           return res.status(400).json({ message: 'Nenhuma credencial fornecida' });
         }
 
@@ -134,28 +136,47 @@ export default async function handler(req, res) {
           const used = await readBlobData(USED_CREDENTIALS_FILE) || [];
           const existingArray = Array.isArray(existing) ? existing : [];
           const usedArray = Array.isArray(used) ? used : [];
-          
-          // Filtrar duplicadas e impedir que credenciais já utilizadas voltem para disponíveis.
+
+          const usedUsernameSet = new Set(usedArray.map(getCredentialUsername).filter(Boolean));
+
+          // Mescla o histórico de uso (aba "Credenciais Utilizadas") sem duplicar entradas.
+          const usedFromFileUsernames = new Set();
+          const newUsedEntries = safeUsedInput.filter(u => {
+            const username = getCredentialUsername(u);
+            if (!username) return false;
+            if (usedUsernameSet.has(username) || usedFromFileUsernames.has(username)) return false;
+            usedFromFileUsernames.add(username);
+            return true;
+          });
+          const importedUsed = newUsedEntries.length;
+          const skippedUsedDuplicate = safeUsedInput.length - importedUsed;
+          const updatedUsed = [...usedArray, ...newUsedEntries];
+
+          // Filtrar duplicadas e impedir que credenciais já utilizadas (existentes ou recém
+          // importadas da aba de uso) voltem para o pool de disponíveis.
+          const excludeFromAvailable = new Set([...usedUsernameSet, ...usedFromFileUsernames]);
           const alreadyAvailableSet = new Set(existingArray.map(getCredentialUsername).filter(Boolean));
-          const alreadyUsedSet = new Set(usedArray.map(getCredentialUsername).filter(Boolean));
           const uploadUsernames = new Set();
           let skippedAlreadyAvailable = 0;
           let skippedAlreadyUsed = 0;
           let skippedDuplicateInFile = 0;
 
-          const newCredentials = credentials.filter(c => {
+          const newCredentials = safeCredentials.filter(c => {
             const username = getCredentialUsername(c);
             if (!username) return false;
             if (uploadUsernames.has(username)) { skippedDuplicateInFile++; return false; }
-            if (alreadyUsedSet.has(username)) { skippedAlreadyUsed++; return false; }
+            if (excludeFromAvailable.has(username)) { skippedAlreadyUsed++; return false; }
             if (alreadyAvailableSet.has(username)) { skippedAlreadyAvailable++; return false; }
             uploadUsernames.add(username);
             return true;
           });
 
-          const updated = [...existingArray, ...newCredentials];
+          const updatedAvailable = [...existingArray, ...newCredentials];
 
-          await writeBlobData(CREDENTIALS_FILE, updated);
+          await writeBlobData(CREDENTIALS_FILE, updatedAvailable);
+          if (importedUsed > 0) {
+            await writeBlobData(USED_CREDENTIALS_FILE, updatedUsed);
+          }
 
           return res.status(200).json({
             success: true,
@@ -163,14 +184,17 @@ export default async function handler(req, res) {
             skippedAlreadyAvailable,
             skippedAlreadyUsed,
             skippedDuplicateInFile,
-            total: updated.length,
+            importedUsed,
+            skippedUsedDuplicate,
+            total: updatedAvailable.length,
+            totalUsed: updatedUsed.length,
             message: `${newCredentials.length} credenciais adicionadas`
           });
         } catch (writeError) {
           console.error('Erro ao escrever credenciais:', writeError);
-          return res.status(500).json({ 
+          return res.status(500).json({
             message: 'Erro ao salvar credenciais no servidor',
-            error: writeError.message 
+            error: writeError.message
           });
         }
       }
